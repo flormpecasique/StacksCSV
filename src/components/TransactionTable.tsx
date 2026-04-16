@@ -29,26 +29,17 @@ function DirectionBadge({ row, lang }: { row: CsvRow; lang: Lang }) {
   const t         = useTranslations(lang);
   const isReceive = !!row.receivedAmount;
   const isSend    = !!row.sentAmount;
-
-  if (isReceive && isSend)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap"
-        style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc" }}>
-        ↔ {t("dirSelf")}
-      </span>
-    );
-  if (isReceive)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap"
-        style={{ background: "rgba(34,197,94,0.12)", color: "#4ade80" }}>
-        ↓ {t("dirReceived")}
-      </span>
-    );
+  if (isReceive && isSend) return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap"
+      style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc" }}>↔ {t("dirSelf")}</span>
+  );
+  if (isReceive) return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap"
+      style={{ background: "rgba(34,197,94,0.12)", color: "#4ade80" }}>↓ {t("dirReceived")}</span>
+  );
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap"
-      style={{ background: "rgba(249,115,22,0.12)", color: "#fb923c" }}>
-      ↑ {t("dirSent")}
-    </span>
+      style={{ background: "rgba(249,115,22,0.12)", color: "#fb923c" }}>↑ {t("dirSent")}</span>
   );
 }
 
@@ -65,20 +56,20 @@ export default function TransactionTable({ rows, walletAddress, lang }: Transact
           style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>
           {t("previewTitle")}
         </h2>
-        <span className="text-xs px-2 py-0.5 rounded-full shrink-0 ml-2"
-          style={{ background: "var(--bg-700)", color: "var(--text-secondary)" }}>
+        <span className="text-xs px-2 py-0.5 rounded-full ml-2"
+          style={{ background: "var(--bg-700)", color: "var(--text-secondary)", flexShrink: 0 }}>
           {rows.length} {rows.length === 1 ? t("stxTransfers") : t("stxTransfersP")}
         </span>
       </div>
 
       {/*
-        table-wrapper handles horizontal scroll.
-        The outer div is `overflow-hidden` so the rounded corners clip correctly.
-        The scroll happens INSIDE, not at the page level.
+        Outer div: overflow:hidden clips rounded corners correctly.
+        Inner .table-wrapper: handles the horizontal scroll.
+        minWidth on table: 480px fits on most phones in landscape.
       */}
       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
         <div className="table-wrapper" style={{ background: "var(--bg-900)" }}>
-          <table className="w-full text-xs" style={{ minWidth: "560px" }}>
+          <table className="w-full text-xs" style={{ minWidth: "480px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {[t("colDate"), t("colDirection"), t("colAmount"), t("colFee"), t("colHash")].map((h) => (
@@ -92,8 +83,7 @@ export default function TransactionTable({ rows, walletAddress, lang }: Transact
             </thead>
             <tbody>
               {preview.map((row, i) => (
-                <tr
-                  key={row.txHash + i}
+                <tr key={row.txHash + i}
                   className="transition-colors duration-100"
                   style={{ borderBottom: i < preview.length - 1 ? "1px solid var(--border)" : "none" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-800)")}
@@ -115,14 +105,11 @@ export default function TransactionTable({ rows, walletAddress, lang }: Transact
                     {row.feeAmount || "—"}
                   </td>
                   <td className="px-3 sm:px-4 py-3">
-                    <a
-                      href={`https://explorer.hiro.so/txid/${row.txHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <a href={`https://explorer.hiro.so/txid/${row.txHash}`}
+                      target="_blank" rel="noopener noreferrer"
                       className="hover:underline transition-colors whitespace-nowrap"
                       style={{ fontFamily: "var(--font-mono)", color: "var(--brand)" }}
-                      title={row.txHash}
-                    >
+                      title={row.txHash}>
                       {truncateHash(row.txHash)}
                     </a>
                   </td>

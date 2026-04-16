@@ -43,11 +43,9 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       <form onSubmit={handleSubmit} style={{ width: "100%" }} noValidate>
-
-        {/* Outer wrapper for the glow effect */}
         <div style={{ position: "relative" }} className="group">
 
-          {/* Animated glow border on focus */}
+          {/* Focus glow */}
           <div
             className="absolute -inset-px rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
             style={{
@@ -56,37 +54,22 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
             }}
           />
 
-          {/*
-            Inner row.
-            overflow:hidden clips the button corners.
-            We do NOT set paddingLeft here — we control spacing via the icon gap.
-          */}
-          <div
-            style={{
-              position:    "relative",
-              display:     "flex",
-              alignItems:  "center",
-              borderRadius: "12px",
-              overflow:    "hidden",
-              background:  "var(--bg-700)",
-              border:      "1px solid var(--border)",
-              /* Explicit left padding so icon has breathing room */
-              paddingLeft: "14px",
-            }}
-          >
-            {/*
-              Icon — always rendered, no Tailwind breakpoint classes.
-              flexShrink:0 stops it from collapsing.
-            */}
+          {/* Input row */}
+          <div style={{
+            position:     "relative",
+            display:      "flex",
+            alignItems:   "center",
+            borderRadius: "12px",
+            overflow:     "hidden",
+            background:   "var(--bg-700)",
+            border:       "1px solid var(--border)",
+            paddingLeft:  "14px",
+          }}>
+            {/* Wallet icon — always visible */}
             <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              width="17" height="17" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor"
+              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ color: "var(--text-muted)", flexShrink: 0 }}
             >
               <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -94,12 +77,8 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
             </svg>
 
             {/*
-              Input.
-              flex:1 + minWidth:0 is the key combination:
-                - flex:1 lets it grow to fill available space
-                - minWidth:0 lets it shrink below its content width
-              Without minWidth:0, a long placeholder forces the container wider.
-              paddingLeft gives the gap between the icon and the cursor.
+              font-size 16px prevents iOS Safari from zooming on focus.
+              flex:1 + minWidth:0 = fills space without overflowing.
             */}
             <input
               type="text"
@@ -125,24 +104,20 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
                 paddingBottom: "14px",
                 paddingLeft:   "10px",
                 paddingRight:  "6px",
-                fontSize:      "14px",
+                fontSize:      "16px", /* ≥16px = no iOS zoom */
                 color:         "var(--text-primary)",
                 fontFamily:    "var(--font-mono)",
               }}
             />
 
-            {/*
-              Button.
-              flexShrink:0 keeps it at a fixed size — it never shrinks.
-              whiteSpace:nowrap prevents the label from wrapping.
-            */}
+            {/* Export button */}
             <button
               type="submit"
               disabled={isLoading || !address.trim()}
               style={{
                 flexShrink:   0,
                 margin:       "6px",
-                padding:      "9px 20px",
+                padding:      "9px 18px",
                 borderRadius: "8px",
                 fontSize:     "14px",
                 fontWeight:   600,
@@ -160,11 +135,8 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
             >
               {isLoading ? (
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }}
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }}>
                     <circle cx="12" cy="12" r="10"
                       stroke="currentColor" strokeWidth="3" strokeDasharray="40 24" />
                   </svg>
@@ -178,55 +150,28 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
         </div>
 
         {validationError && (
-          <p
-            className="animate-fade-in"
-            style={{
-              marginTop:  "8px",
-              fontSize:   "12px",
-              color:      "#f87171",
-              fontFamily: "var(--font-body)",
-            }}
-            role="alert"
-          >
+          <p className="animate-fade-in" role="alert"
+            style={{ marginTop: "8px", fontSize: "12px", color: "#f87171", fontFamily: "var(--font-body)" }}>
             ⚠ {validationError}
           </p>
         )}
       </form>
 
       {/* Example + trust signal */}
-      <div
-        style={{
-          display:        "flex",
-          flexWrap:       "wrap",
-          alignItems:     "center",
-          justifyContent: "space-between",
-          gap:            "4px",
-        }}
-      >
-        <p
-          style={{
-            fontSize:     "12px",
-            color:        "var(--text-muted)",
-            fontFamily:   "var(--font-mono)",
-            overflow:     "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace:   "nowrap",
-            maxWidth:     "55%",
-          }}
-        >
+      <div style={{
+        display: "flex", flexWrap: "wrap",
+        alignItems: "center", justifyContent: "space-between", gap: "4px",
+      }}>
+        <p style={{
+          fontSize: "12px", color: "var(--text-muted)", fontFamily: "var(--font-mono)",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "58%",
+        }}>
           {t("addressExample")}
         </p>
-        <p
-          style={{
-            display:    "flex",
-            alignItems: "center",
-            gap:        "4px",
-            fontSize:   "12px",
-            color:      "var(--text-muted)",
-            fontFamily: "var(--font-body)",
-            flexShrink: 0,
-          }}
-        >
+        <p style={{
+          display: "flex", alignItems: "center", gap: "4px",
+          fontSize: "12px", color: "var(--text-muted)", fontFamily: "var(--font-body)", flexShrink: 0,
+        }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />

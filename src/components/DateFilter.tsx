@@ -14,6 +14,58 @@ interface DateFilterProps {
   lang:     Lang;
 }
 
+/*
+  Unified date-range pill design:
+  ┌─────────────────────────────────────────┐
+  │ FROM           │ TO                      │
+  │ 1 Jan 2026     │ 31 Dec 2026             │
+  └─────────────────────────────────────────┘
+
+  Key Safari/iPadOS fixes:
+  - Single outer container with overflow:hidden clips native date chrome
+  - minmax(0,1fr) on each cell: never wider than its column
+  - font-size 16px on inputs prevents iOS zoom-on-focus
+  - box-sizing:border-box everywhere
+*/
+
+const fieldStyle: React.CSSProperties = {
+  flex:          "1 1 0%",
+  minWidth:      0,
+  display:       "flex",
+  flexDirection: "column",
+  padding:       "10px 14px",
+  boxSizing:     "border-box",
+};
+
+const labelStyle: React.CSSProperties = {
+  display:       "block",
+  fontSize:      "10px",
+  fontWeight:    600,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color:         "var(--text-muted)",
+  fontFamily:    "var(--font-display)",
+  marginBottom:  "3px",
+};
+
+const inputStyle: React.CSSProperties = {
+  background:  "transparent",
+  border:      "none",
+  outline:     "none",
+  color:       "var(--text-primary)",
+  fontFamily:  "var(--font-mono)",
+  fontSize:    "16px",   /* ≥16px prevents iOS zoom */
+  fontWeight:  500,
+  width:       "100%",
+  minWidth:    0,
+  maxWidth:    "100%",
+  padding:     0,
+  margin:      0,
+  boxSizing:   "border-box",
+  colorScheme: "dark",
+  cursor:      "pointer",
+};
+
 export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
   const t = useTranslations(lang);
 
@@ -30,137 +82,63 @@ export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 
-      {/* Section label */}
+      {/* Label */}
       <p style={{
-        margin: 0,
-        fontSize: "11px",
-        fontWeight: 600,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        color: "var(--text-muted)",
-        fontFamily: "var(--font-display)",
+        margin: 0, fontSize: "11px", fontWeight: 600,
+        letterSpacing: "0.1em", textTransform: "uppercase",
+        color: "var(--text-muted)", fontFamily: "var(--font-display)",
       }}>
         {t("filterTitle")}
       </p>
 
       {/*
-        Unified date range container.
-        Looks like ONE element, not two separate inputs.
-        Overflow:hidden clips the native Safari date-picker chrome.
+        Unified pill container.
+        overflow:hidden is critical — it clips the native calendar icon
+        that Safari renders outside the input's layout box.
       */}
       <div style={{
         display:      "flex",
         alignItems:   "stretch",
         borderRadius: "12px",
-        overflow:     "hidden",
+        overflow:     "hidden",           /* ← key Safari fix */
         border:       "1px solid var(--border)",
         background:   "var(--bg-700)",
         width:        "100%",
         boxSizing:    "border-box",
       }}>
 
-        {/* FROM field */}
-        <div style={{
-          flex:           "1 1 0%",
-          minWidth:       0,
-          display:        "flex",
-          flexDirection:  "column",
-          padding:        "10px 14px 10px 14px",
-          boxSizing:      "border-box",
-        }}>
-          <span style={{
-            fontSize:   "10px",
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color:      "var(--text-muted)",
-            fontFamily: "var(--font-display)",
-            marginBottom: "4px",
-            display:    "block",
-          }}>
-            {t("from")}
-          </span>
+        {/* FROM */}
+        <div style={fieldStyle}>
+          <span style={labelStyle}>{t("from")}</span>
           <input
             type="date"
             value={range.from}
             max={range.to || undefined}
             onChange={(e) => onChange({ ...range, from: e.target.value })}
-            style={{
-              background:  "transparent",
-              border:      "none",
-              outline:     "none",
-              color:       "var(--text-primary)",
-              fontFamily:  "var(--font-mono)",
-              fontSize:    "14px",
-              fontWeight:  500,
-              width:       "100%",
-              minWidth:    0,
-              maxWidth:    "100%",
-              padding:     0,
-              margin:      0,
-              boxSizing:   "border-box",
-              colorScheme: "dark",
-              cursor:      "pointer",
-            }}
+            style={inputStyle}
           />
         </div>
 
-        {/* Vertical divider — a thin line, not a gap */}
+        {/* Divider — 1px vertical line, same color as all borders */}
         <div style={{
-          width:      "1px",
-          background: "var(--border)",
-          flexShrink: 0,
-          alignSelf:  "stretch",
+          width: "1px", flexShrink: 0,
+          background: "var(--border)", alignSelf: "stretch",
         }} />
 
-        {/* TO field */}
-        <div style={{
-          flex:           "1 1 0%",
-          minWidth:       0,
-          display:        "flex",
-          flexDirection:  "column",
-          padding:        "10px 14px 10px 14px",
-          boxSizing:      "border-box",
-        }}>
-          <span style={{
-            fontSize:   "10px",
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color:      "var(--text-muted)",
-            fontFamily: "var(--font-display)",
-            marginBottom: "4px",
-            display:    "block",
-          }}>
-            {t("to")}
-          </span>
+        {/* TO */}
+        <div style={fieldStyle}>
+          <span style={labelStyle}>{t("to")}</span>
           <input
             type="date"
             value={range.to}
             min={range.from || undefined}
             onChange={(e) => onChange({ ...range, to: e.target.value })}
-            style={{
-              background:  "transparent",
-              border:      "none",
-              outline:     "none",
-              color:       "var(--text-primary)",
-              fontFamily:  "var(--font-mono)",
-              fontSize:    "14px",
-              fontWeight:  500,
-              width:       "100%",
-              minWidth:    0,
-              maxWidth:    "100%",
-              padding:     0,
-              margin:      0,
-              boxSizing:   "border-box",
-              colorScheme: "dark",
-              cursor:      "pointer",
-            }}
+            style={inputStyle}
           />
         </div>
       </div>
 
-      {/* Quick-select preset buttons */}
+      {/* Quick-select presets */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
         {presets.map((preset) => {
           const pr     = preset.getRange();
@@ -170,9 +148,9 @@ export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
               key={preset.label}
               onClick={() => onChange(pr)}
               style={{
-                padding:      "6px 14px",
+                padding:      "7px 14px",
                 borderRadius: "8px",
-                fontSize:     "12px",
+                fontSize:     "13px",
                 fontFamily:   "var(--font-display)",
                 fontWeight:   active ? 600 : 400,
                 background:   active

@@ -27,35 +27,22 @@ export default function DonationSection({ lang }: { lang: Lang }) {
   return (
     <section
       className="rounded-xl p-5 text-center flex flex-col items-center gap-4"
-      style={{
-        background: "var(--bg-800)",
-        border:     "1px solid var(--border)",
-      }}
+      style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
       aria-label="Donation"
     >
-      {/* Copy */}
-      <p
-        className="text-sm max-w-xs leading-relaxed"
-        style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}
-      >
+      <p className="text-sm max-w-xs leading-relaxed"
+        style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}>
         {t("donationTitle")}
       </p>
-
-      {/* Button */}
       <button
         onClick={copyAddress}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
         style={{
-          background: copied
-            ? "rgba(74,222,128,0.15)"
-            : "linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.15) 100%)",
-          border:     copied
-            ? "1px solid rgba(74,222,128,0.3)"
-            : "1px solid rgba(249,115,22,0.3)",
+          background: copied ? "rgba(74,222,128,0.15)" : "linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.15) 100%)",
+          border:     copied ? "1px solid rgba(74,222,128,0.3)" : "1px solid rgba(249,115,22,0.3)",
           color:      copied ? "#4ade80" : "var(--brand)",
           fontFamily: "var(--font-display)",
         }}
-        aria-label={t("donationBtn")}
       >
         {copied ? (
           <>
@@ -66,9 +53,7 @@ export default function DonationSection({ lang }: { lang: Lang }) {
             {t("copiedDonation")}
           </>
         ) : (
-          <>
-            🧡 {t("donationBtn")}
-          </>
+          <>🧡 {t("donationBtn")}</>
         )}
       </button>
     </section>
