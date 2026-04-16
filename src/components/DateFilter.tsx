@@ -9,43 +9,35 @@ import {
 import { type Lang, useTranslations } from "@/lib/i18n";
 
 interface DateFilterProps {
-  range: DateRange;
+  range:    DateRange;
   onChange: (range: DateRange) => void;
-  lang: Lang;
+  lang:     Lang;
 }
 
 export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
   const t = useTranslations(lang);
 
-  // Quick-select presets
   const presets = [
     { label: t("thisYear"),   getRange: getThisYearRange   },
     { label: t("lastYear"),   getRange: getLastYearRange   },
     { label: t("last30Days"), getRange: getLast30DaysRange },
   ];
 
-  function isActivePreset(presetRange: DateRange) {
-    return range.from === presetRange.from && range.to === presetRange.to;
+  function isActive(pr: DateRange) {
+    return range.from === pr.from && range.to === pr.to;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Label */}
-      <p
-        className="text-xs font-semibold uppercase tracking-widest"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-widest"
+        style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
         {t("filterTitle")}
       </p>
 
-      {/* Date inputs row */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        {/* From */}
-        <div className="flex-1 flex flex-col gap-1">
-          <label
-            className="text-xs"
-            style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}
-          >
+      {/* Date inputs — always stacked on mobile, side-by-side on sm+ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
             {t("from")}
           </label>
           <input
@@ -55,30 +47,19 @@ export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
             onChange={(e) => onChange({ ...range, from: e.target.value })}
             className="w-full rounded-lg px-3 py-2 text-sm"
             style={{
-              background:   "var(--bg-700)",
-              border:       "1px solid var(--border)",
-              color:        "var(--text-primary)",
-              fontFamily:   "var(--font-mono)",
-              colorScheme:  "dark",
-              outline:      "none",
+              background:  "var(--bg-700)",
+              border:      "1px solid var(--border)",
+              color:       "var(--text-primary)",
+              fontFamily:  "var(--font-mono)",
+              colorScheme: "dark",
+              outline:     "none",
+              minWidth:    0,    /* prevent overflow */
             }}
           />
         </div>
 
-        {/* Separator */}
-        <div
-          className="hidden sm:flex items-end pb-2 text-sm"
-          style={{ color: "var(--text-muted)" }}
-        >
-          →
-        </div>
-
-        {/* To */}
-        <div className="flex-1 flex flex-col gap-1">
-          <label
-            className="text-xs"
-            style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}
-          >
+        <div className="flex flex-col gap-1">
+          <label className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
             {t("to")}
           </label>
           <input
@@ -88,36 +69,33 @@ export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
             onChange={(e) => onChange({ ...range, to: e.target.value })}
             className="w-full rounded-lg px-3 py-2 text-sm"
             style={{
-              background:   "var(--bg-700)",
-              border:       "1px solid var(--border)",
-              color:        "var(--text-primary)",
-              fontFamily:   "var(--font-mono)",
-              colorScheme:  "dark",
-              outline:      "none",
+              background:  "var(--bg-700)",
+              border:      "1px solid var(--border)",
+              color:       "var(--text-primary)",
+              fontFamily:  "var(--font-mono)",
+              colorScheme: "dark",
+              outline:     "none",
+              minWidth:    0,
             }}
           />
         </div>
       </div>
 
-      {/* Quick-select preset buttons */}
+      {/* Quick-select buttons — wrap naturally */}
       <div className="flex flex-wrap gap-2">
         {presets.map((preset) => {
-          const presetRange = preset.getRange();
-          const active = isActivePreset(presetRange);
+          const pr     = preset.getRange();
+          const active = isActive(pr);
           return (
             <button
               key={preset.label}
-              onClick={() => onChange(presetRange)}
-              className="text-xs px-3 py-1.5 rounded-lg transition-all duration-150"
+              onClick={() => onChange(pr)}
+              className="text-xs px-3 py-1.5 rounded-lg transition-all duration-150 whitespace-nowrap"
               style={{
                 fontFamily: "var(--font-display)",
-                background: active
-                  ? "linear-gradient(135deg, #f97316 0%, #ea580c 100%)"
-                  : "var(--bg-700)",
-                color: active ? "#fff" : "var(--text-secondary)",
-                border: active
-                  ? "1px solid transparent"
-                  : "1px solid var(--border)",
+                background: active ? "linear-gradient(135deg, #f97316 0%, #ea580c 100%)" : "var(--bg-700)",
+                color:      active ? "#fff" : "var(--text-secondary)",
+                border:     active ? "1px solid transparent" : "1px solid var(--border)",
                 fontWeight: active ? 600 : 400,
               }}
             >
