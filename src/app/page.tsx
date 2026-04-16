@@ -18,7 +18,7 @@ import {
 import { type Lang, useTranslations } from "@/lib/i18n";
 import type { CsvRow, ApiSuccessResponse, ApiErrorResponse } from "@/types";
 
-// ─── State ───────────────────────────────────────────────────────────────────
+// ─── State ────────────────────────────────────────────────────────────────
 type AppState =
   | { status: "idle" }
   | { status: "loading" }
@@ -26,7 +26,6 @@ type AppState =
   | { status: "empty";   address: string; resolvedFrom?: string }
   | { status: "error";   message: string };
 
-// ─── Download CSV to disk ────────────────────────────────────────────────────
 function downloadCsv(rows: CsvRow[], address: string, range: DateRange) {
   const csv  = rowsToCsv(rows);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -38,13 +37,11 @@ function downloadCsv(rows: CsvRow[], address: string, range: DateRange) {
   URL.revokeObjectURL(url);
 }
 
-// ─── Copy CSV to clipboard ───────────────────────────────────────────────────
-async function copyCsvToClipboard(rows: CsvRow[]): Promise<void> {
-  const csv = rowsToCsv(rows);
-  await navigator.clipboard.writeText(csv);
+async function copyCsvToClipboard(rows: CsvRow[]) {
+  await navigator.clipboard.writeText(rowsToCsv(rows));
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [state,     setState]     = useState<AppState>({ status: "idle" });
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultRange());
@@ -53,13 +50,11 @@ export default function Home() {
 
   const t = useTranslations(lang);
 
-  // ── Fetch ──────────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (input: string) => {
     setState({ status: "loading" });
     try {
       const res  = await fetch(`/api/transactions?address=${encodeURIComponent(input)}`);
       const data: ApiSuccessResponse | ApiErrorResponse = await res.json();
-
       if (!res.ok || "error" in data) {
         setState({ status: "error", message: ("error" in data ? data.error : null) ?? "Unknown error." });
         return;
@@ -76,18 +71,16 @@ export default function Home() {
     }
   }, [lang]);
 
-  // ── Derived state ──────────────────────────────────────────────────────
   const filteredRows = useMemo(() => {
     if (state.status !== "success") return [];
     return filterRowsByDateRange(state.rows, dateRange);
   }, [state, dateRange]);
 
-  const summary      = useMemo(() => computeSummary(filteredRows), [filteredRows]);
-  const hasResults   = state.status === "success";
-  const noInRange    = hasResults && filteredRows.length === 0;
-  const isLoading    = state.status === "loading";
+  const summary    = useMemo(() => computeSummary(filteredRows), [filteredRows]);
+  const hasResults = state.status === "success";
+  const noInRange  = hasResults && filteredRows.length === 0;
+  const isLoading  = state.status === "loading";
 
-  // ── Copy CSV ───────────────────────────────────────────────────────────
   async function handleCopyCsv() {
     await copyCsvToClipboard(filteredRows);
     setCsvCopied(true);
@@ -95,25 +88,30 @@ export default function Home() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col" style={{ background: "var(--bg-base)" }}>
-
-      {/* Ambient glow */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
+    <div
+      className="relative min-h-screen flex flex-col"
+      style={{ background: "var(--bg-base)", overflowX: "hidden" }}
+    >
+      {/* Ambient glow — pointer-events: none, won't affect layout */}
+      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: 0, overflow: "hidden" }}>
         <div style={{
           position: "absolute", top: "-20%", left: "50%", transform: "translateX(-50%)",
-          width: "900px", height: "700px",
+          width: "min(900px, 150vw)", height: "700px",
           background: "radial-gradient(ellipse at center, rgba(249,115,22,0.07) 0%, transparent 70%)",
-          pointerEvents: "none",
         }} />
       </div>
 
-      <main className="relative flex-1 w-full max-w-3xl mx-auto px-4 py-12 sm:py-16 flex flex-col gap-8" style={{ zIndex: 1 }}>
+      {/* ── Main ──────────────────────────────────────────────────────────── */}
+      <main
+        className="relative flex-1 w-full max-w-3xl mx-auto px-4 py-12 sm:py-16 flex flex-col gap-8"
+        style={{ zIndex: 1 }}
+      >
 
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <header className="animate-fade-in">
 
-          {/* Top bar: trust badge + language toggle */}
-          <div className="flex items-center justify-between mb-8">
+          {/* Top bar — wraps on very small screens */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-8">
             {/* Trust badge */}
             <div
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
@@ -122,12 +120,10 @@ export default function Home() {
                 border:     "1px solid rgba(249,115,22,0.2)",
                 color:      "var(--brand)",
                 fontFamily: "var(--font-display)",
+                flexShrink: 0,
               }}
             >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: "var(--brand)" }}
-              />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brand)" }} />
               {t("trustBadge")}
             </div>
 
@@ -150,7 +146,7 @@ export default function Home() {
           <div className="flex flex-col items-center text-center gap-4">
             <div
               className="inline-flex items-center justify-center w-14 h-14 rounded-2xl glow-orange"
-              style={{ background: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)" }}
+              style={{ background: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)", flexShrink: 0 }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -161,14 +157,14 @@ export default function Home() {
             </div>
 
             <h1
-              className="text-3xl sm:text-4xl font-bold tracking-tight"
+              className="text-2xl sm:text-4xl font-bold tracking-tight"
               style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)", lineHeight: 1.15 }}
             >
               {t("heroH1")}
             </h1>
 
             <p
-              className="text-base max-w-sm leading-relaxed"
+              className="text-sm sm:text-base max-w-sm leading-relaxed"
               style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}
             >
               {t("heroSub")}
@@ -176,9 +172,9 @@ export default function Home() {
           </div>
         </header>
 
-        {/* ── INPUT + DATE FILTER CARD ───────────────────────────────────── */}
+        {/* ── INPUT + DATE FILTER ────────────────────────────────────────── */}
         <section
-          className="rounded-2xl p-5 animate-slide-up flex flex-col gap-5"
+          className="rounded-2xl p-4 sm:p-5 animate-slide-up flex flex-col gap-5"
           style={{ background: "var(--bg-800)", border: "1px solid var(--border)", animationDelay: "80ms" }}
         >
           <AddressInput onSubmit={handleSubmit} isLoading={isLoading} lang={lang} />
@@ -186,30 +182,29 @@ export default function Home() {
           <DateFilter range={dateRange} onChange={setDateRange} lang={lang} />
         </section>
 
-        {/* ── LOADING ───────────────────────────────────────────────────── */}
+        {/* ── LOADING ────────────────────────────────────────────────────── */}
         {isLoading && <LoadingSkeleton lang={lang} />}
 
-        {/* ── ERROR ─────────────────────────────────────────────────────── */}
+        {/* ── ERROR ──────────────────────────────────────────────────────── */}
         {state.status === "error" && (
-          <div
-            className="rounded-xl p-4 animate-fade-in flex items-start gap-3"
+          <div className="rounded-xl p-4 animate-fade-in flex items-start gap-3"
             style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}
             role="alert"
           >
-            <span className="text-lg mt-0.5">⚠️</span>
-            <div>
+            <span className="text-lg mt-0.5 shrink-0">⚠️</span>
+            <div className="min-w-0">
               <p className="font-semibold text-sm"
                 style={{ color: "#f87171", fontFamily: "var(--font-display)" }}>
                 {t("errorTitle")}
               </p>
-              <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+              <p className="text-sm mt-1 break-words" style={{ color: "var(--text-secondary)" }}>
                 {state.message}
               </p>
             </div>
           </div>
         )}
 
-        {/* ── EMPTY: no transfers on-chain ──────────────────────────────── */}
+        {/* ── EMPTY ──────────────────────────────────────────────────────── */}
         {state.status === "empty" && (
           <div className="rounded-xl p-6 animate-fade-in text-center"
             style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
@@ -221,12 +216,11 @@ export default function Home() {
               {t("noTxFound")}
             </p>
             {state.resolvedFrom && (
-              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              <p className="text-xs mt-1 break-all" style={{ color: "var(--text-muted)" }}>
                 {t("resolved")}{" "}
                 <span style={{ color: "var(--brand)", fontFamily: "var(--font-mono)" }}>
                   {state.resolvedFrom}
-                </span>{" "}
-                → <span style={{ fontFamily: "var(--font-mono)" }}>{state.address}</span>
+                </span>
               </p>
             )}
             <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
@@ -235,12 +229,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── RESULTS ───────────────────────────────────────────────────── */}
+        {/* ── RESULTS ────────────────────────────────────────────────────── */}
         {hasResults && (
           <>
-            {/* Transaction count + resolved BNS */}
-            <div className="animate-fade-in flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            {/* Transaction count row — stacks vertically on mobile */}
+            <div className="animate-fade-in flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span
                   className="text-2xl font-bold"
                   style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
@@ -252,7 +246,7 @@ export default function Home() {
                 </span>
                 {state.resolvedFrom && (
                   <span
-                    className="hidden sm:inline text-xs px-2 py-0.5 rounded-full"
+                    className="text-xs px-2 py-0.5 rounded-full"
                     style={{ background: "rgba(249,115,22,0.1)", color: "var(--brand)", fontFamily: "var(--font-mono)" }}
                   >
                     {state.resolvedFrom}
@@ -264,7 +258,7 @@ export default function Home() {
               </span>
             </div>
 
-            {/* Tax summary dashboard */}
+            {/* Tax summary */}
             <SummaryStats summary={summary} lang={lang} />
 
             {/* Export bar */}
@@ -272,13 +266,12 @@ export default function Home() {
               className="rounded-xl p-4 animate-fade-in flex flex-col gap-3"
               style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
             >
-              {/* Buttons row */}
-              <div className="flex flex-wrap gap-2">
-                {/* Primary: Download */}
+              {/* Buttons — each takes full width on mobile, auto on sm+ */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => downloadCsv(filteredRows, state.address, dateRange)}
                   disabled={noInRange}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
                     background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
                     color:      "#fff",
@@ -294,11 +287,10 @@ export default function Home() {
                   {t("downloadBtn")}
                 </button>
 
-                {/* Secondary: Copy CSV */}
                 <button
                   onClick={handleCopyCsv}
                   disabled={noInRange}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
                     background: csvCopied ? "rgba(74,222,128,0.1)" : "var(--bg-700)",
                     border:     csvCopied ? "1px solid rgba(74,222,128,0.25)" : "1px solid var(--border)",
@@ -327,13 +319,12 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Compat note */}
               <p className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
                 {t("compatNote")}
               </p>
             </div>
 
-            {/* Empty range state */}
+            {/* Empty range */}
             {noInRange ? (
               <div className="rounded-xl p-6 animate-fade-in text-center"
                 style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
@@ -352,12 +343,11 @@ export default function Home() {
               <TransactionTable rows={filteredRows} walletAddress={state.address} lang={lang} />
             )}
 
-            {/* Donation — after export, best placement */}
             <DonationSection lang={lang} />
           </>
         )}
 
-        {/* ── HOW IT WORKS (idle) ────────────────────────────────────────── */}
+        {/* ── IDLE ───────────────────────────────────────────────────────── */}
         {state.status === "idle" && (
           <>
             <HowItWorks lang={lang} />
@@ -367,23 +357,23 @@ export default function Home() {
         )}
       </main>
 
-      {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-      <footer className="relative text-center py-6 text-xs"
+      {/* ── FOOTER ─────────────────────────────────────────────────────────*/}
+      <footer className="relative text-center py-6 px-4 text-xs"
         style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)", zIndex: 1, borderTop: "1px solid var(--border)" }}>
         <p>
           {t("footerText")}{" "}
           <a href="https://docs.hiro.so" target="_blank" rel="noopener noreferrer"
             className="hover:underline" style={{ color: "var(--brand)" }}>
             Hiro Systems
-          </a>
-          {" "}{t("footerSuffix")}
+          </a>{" "}
+          {t("footerSuffix")}
         </p>
       </footer>
     </div>
   );
 }
 
-// ─── How it works ─────────────────────────────────────────────────────────────
+// ─── How it works ─────────────────────────────────────────────────────────
 function HowItWorks({ lang }: { lang: Lang }) {
   const t     = useTranslations(lang);
   const steps = [
@@ -391,12 +381,9 @@ function HowItWorks({ lang }: { lang: Lang }) {
     { icon: "⛓",  title: t("step2Title"), desc: t("step2Desc") },
     { icon: "📊", title: t("step3Title"), desc: t("step3Desc") },
   ];
-
   return (
-    <section
-      className="rounded-2xl p-5 animate-slide-up"
-      style={{ background: "var(--bg-800)", border: "1px solid var(--border)", animationDelay: "160ms" }}
-    >
+    <section className="rounded-2xl p-5 animate-slide-up"
+      style={{ background: "var(--bg-800)", border: "1px solid var(--border)", animationDelay: "160ms" }}>
       <h2 className="text-xs font-semibold uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
         {t("howItWorks")}
@@ -408,7 +395,7 @@ function HowItWorks({ lang }: { lang: Lang }) {
               style={{ background: "var(--bg-700)" }}>
               {step.icon}
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="font-semibold text-sm"
                 style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 {step.title}
@@ -424,37 +411,33 @@ function HowItWorks({ lang }: { lang: Lang }) {
   );
 }
 
-// ─── Why this tool ────────────────────────────────────────────────────────────
+// ─── Why this tool ─────────────────────────────────────────────────────────
 function WhyThisTool({ lang }: { lang: Lang }) {
   const t      = useTranslations(lang);
   const points = [t("why1"), t("why2"), t("why3")];
   const icons  = [
-    // Stacks icon
     <svg key="1" width="15" height="15" viewBox="0 0 24 24" fill="none"
       stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="4" rx="1" /><rect x="2" y="10" width="20" height="4" rx="1" />
+      <rect x="2" y="3" width="20" height="4" rx="1" />
+      <rect x="2" y="10" width="20" height="4" rx="1" />
       <rect x="2" y="17" width="20" height="4" rx="1" />
     </svg>,
-    // Tax icon
     <svg key="2" width="15" height="15" viewBox="0 0 24 24" fill="none"
       stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
     </svg>,
-    // Lock icon
     <svg key="3" width="15" height="15" viewBox="0 0 24 24" fill="none"
       stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>,
   ];
-
   return (
-    <section
-      className="rounded-2xl p-5 animate-slide-up"
-      style={{ background: "var(--bg-800)", border: "1px solid var(--border)", animationDelay: "240ms" }}
-    >
+    <section className="rounded-2xl p-5 animate-slide-up"
+      style={{ background: "var(--bg-800)", border: "1px solid var(--border)", animationDelay: "240ms" }}>
       <h2 className="text-xs font-semibold uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
         {t("whyTitle")}

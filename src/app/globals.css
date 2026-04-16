@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Variables ─────────────────────────────────────────────────────────── */
+/* ─── CSS Variables ──────────────────────────────────────────────────────── */
 :root {
   --font-display: 'Syne', sans-serif;
   --font-body:    'DM Sans', sans-serif;
@@ -28,36 +28,44 @@
   --border-hover:   rgba(249, 115, 22, 0.35);
 }
 
-/* ─── Base ─────────────────────────────────────────────────────────────────── */
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+*  { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
   background-color: var(--bg-base);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
+  color:            var(--text-primary);
+  font-family:      var(--font-body);
+  -webkit-font-smoothing:  antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal overflow at body level */
+  overflow-x: hidden;
+  width: 100%;
 }
 
-/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-800); }
-::-webkit-scrollbar-thumb { background: var(--bg-600); border-radius: 3px; }
+/* ─── Prevent any child from overflowing the viewport ───────────────────── */
+#__next,
+main {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar         { width: 6px; height: 6px; }
+::-webkit-scrollbar-track   { background: var(--bg-800); }
+::-webkit-scrollbar-thumb   { background: var(--bg-600); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--brand); }
 
-/* ─── Table horizontal scroll ───────────────────────────────────────────────── */
+/* ─── Table wrapper — horizontal scroll ONLY inside this container ───────── */
 .table-wrapper {
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  /* Keep table inside its card, never bleed out */
+  max-width: 100%;
 }
 
-/* ─── Noise texture overlay ─────────────────────────────────────────────────── */
+/* ─── Noise texture ──────────────────────────────────────────────────────── */
 .noise::before {
   content: '';
   position: fixed;
@@ -68,43 +76,46 @@ body {
   opacity: 0.4;
 }
 
-/* ─── Glow effect ───────────────────────────────────────────────────────────── */
+/* ─── Glow ───────────────────────────────────────────────────────────────── */
 .glow-orange {
-  box-shadow: 0 0 40px var(--brand-glow), 0 0 80px rgba(249, 115, 22, 0.06);
+  box-shadow: 0 0 40px var(--brand-glow), 0 0 80px rgba(249,115,22,0.06);
 }
 
-/* ─── Animations ────────────────────────────────────────────────────────────── */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
-}
-
-.animate-fade-in  { animation: fadeIn 0.4s ease forwards; }
+.animate-fade-in  { animation: fadeIn  0.4s ease forwards; }
 .animate-slide-up { animation: slideUp 0.5s ease forwards; }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--bg-700) 25%,
-    var(--bg-600) 50%,
-    var(--bg-700) 75%
-  );
+  background: linear-gradient(90deg, var(--bg-700) 25%, var(--bg-600) 50%, var(--bg-700) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-/* ─── Input focus ring ──────────────────────────────────────────────────────── */
+/* ─── Input focus ring ───────────────────────────────────────────────────── */
 input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--brand), 0 0 20px var(--brand-glow);
+}
+
+/* ─── Mobile: ensure date inputs render correctly ────────────────────────── */
+input[type="date"] {
+  min-width: 0;
+  width: 100%;
+}
+
+/* ─── Truncate long addresses in display contexts ────────────────────────── */
+.addr-truncate {
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+  max-width:     120px;
+}
+
+/* ─── Button base: never overflow parent ─────────────────────────────────── */
+button {
+  flex-shrink: 0;
 }
