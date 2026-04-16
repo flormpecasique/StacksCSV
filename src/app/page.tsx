@@ -18,7 +18,6 @@ import {
 import { type Lang, useTranslations } from "@/lib/i18n";
 import type { CsvRow, ApiSuccessResponse, ApiErrorResponse } from "@/types";
 
-// ─── State ────────────────────────────────────────────────────────────────
 type AppState =
   | { status: "idle" }
   | { status: "loading" }
@@ -31,23 +30,15 @@ function downloadCsv(rows: CsvRow[], address: string, range: DateRange) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
-  a.href     = url;
-  a.download = buildCsvFilename(address, range);
-  a.click();
+  a.href = url; a.download = buildCsvFilename(address, range); a.click();
   URL.revokeObjectURL(url);
 }
 
-async function copyCsvToClipboard(rows: CsvRow[]) {
-  await navigator.clipboard.writeText(rowsToCsv(rows));
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [state,     setState]     = useState<AppState>({ status: "idle" });
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultRange());
   const [lang,      setLang]      = useState<Lang>("en");
   const [csvCopied, setCsvCopied] = useState(false);
-
   const t = useTranslations(lang);
 
   const handleSubmit = useCallback(async (input: string) => {
@@ -82,18 +73,18 @@ export default function Home() {
   const isLoading  = state.status === "loading";
 
   async function handleCopyCsv() {
-    await copyCsvToClipboard(filteredRows);
+    await navigator.clipboard.writeText(rowsToCsv(filteredRows));
     setCsvCopied(true);
     setTimeout(() => setCsvCopied(false), 2500);
   }
 
   return (
-    <div
-      className="relative min-h-screen flex flex-col"
-      style={{ background: "var(--bg-base)", overflowX: "hidden" }}
-    >
-      {/* Ambient glow — pointer-events: none, won't affect layout */}
-      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: 0, overflow: "hidden" }}>
+    <div className="relative min-h-screen flex flex-col"
+      style={{ background: "var(--bg-base)", overflowX: "hidden" }}>
+
+      {/* Ambient glow — fixed, pointer-events:none, clipped */}
+      <div aria-hidden className="pointer-events-none fixed inset-0"
+        style={{ zIndex: 0, overflow: "hidden" }}>
         <div style={{
           position: "absolute", top: "-20%", left: "50%", transform: "translateX(-50%)",
           width: "min(900px, 150vw)", height: "700px",
@@ -101,41 +92,35 @@ export default function Home() {
         }} />
       </div>
 
-      {/* ── Main ──────────────────────────────────────────────────────────── */}
+      {/* ── Main content ──────────────────────────────────────────────────── */}
       <main
         className="relative flex-1 w-full max-w-3xl mx-auto px-4 py-12 sm:py-16 flex flex-col gap-8"
         style={{ zIndex: 1 }}
       >
-
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <header className="animate-fade-in">
-
-          {/* Top bar — wraps on very small screens */}
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-8">
-            {/* Trust badge */}
-            <div
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
-              style={{
-                background: "rgba(249,115,22,0.08)",
-                border:     "1px solid rgba(249,115,22,0.2)",
-                color:      "var(--brand)",
-                fontFamily: "var(--font-display)",
-                flexShrink: 0,
-              }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brand)" }} />
+          {/* Top bar: trust badge + language toggle — wraps on tiny screens */}
+          <div style={{
+            display: "flex", flexWrap: "wrap",
+            alignItems: "center", justifyContent: "space-between",
+            gap: "8px", marginBottom: "32px",
+          }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: "6px",
+              padding: "6px 12px", borderRadius: "9999px", fontSize: "12px",
+              background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)",
+              color: "var(--brand)", fontFamily: "var(--font-display)", flexShrink: 0,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand)", flexShrink: 0 }} />
               {t("trustBadge")}
             </div>
-
-            {/* Language toggle */}
             <button
               onClick={() => setLang(l => l === "en" ? "es" : "en")}
-              className="text-xs px-3 py-1.5 rounded-lg transition-all duration-150"
               style={{
-                fontFamily: "var(--font-display)",
-                background: "var(--bg-800)",
-                border:     "1px solid var(--border)",
-                color:      "var(--text-secondary)",
+                fontSize: "12px", padding: "6px 12px", borderRadius: "8px",
+                fontFamily: "var(--font-display)", background: "var(--bg-800)",
+                border: "1px solid var(--border)", color: "var(--text-secondary)",
+                cursor: "pointer", flexShrink: 0,
               }}
             >
               🌐 {t("language")}
@@ -144,39 +129,29 @@ export default function Home() {
 
           {/* Logo + H1 */}
           <div className="flex flex-col items-center text-center gap-4">
-            <div
-              className="inline-flex items-center justify-center w-14 h-14 rounded-2xl glow-orange"
-              style={{ background: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)", flexShrink: 0 }}
-            >
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl glow-orange"
+              style={{ background: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)", flexShrink: 0 }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
             </div>
-
-            <h1
-              className="text-2xl sm:text-4xl font-bold tracking-tight"
-              style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)", lineHeight: 1.15 }}
-            >
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight"
+              style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)", lineHeight: 1.15 }}>
               {t("heroH1")}
             </h1>
-
-            <p
-              className="text-sm sm:text-base max-w-sm leading-relaxed"
-              style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}
-            >
+            <p className="text-sm sm:text-base max-w-sm leading-relaxed"
+              style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}>
               {t("heroSub")}
             </p>
           </div>
         </header>
 
         {/* ── INPUT + DATE FILTER ────────────────────────────────────────── */}
-        <section
-          className="rounded-2xl p-4 sm:p-5 animate-slide-up flex flex-col gap-5"
-          style={{ background: "var(--bg-800)", border: "1px solid var(--border)", animationDelay: "80ms" }}
-        >
+        <section className="rounded-2xl p-4 sm:p-5 animate-slide-up flex flex-col gap-5"
+          style={{ background: "var(--bg-800)", border: "1px solid var(--border)", animationDelay: "80ms" }}>
           <AddressInput onSubmit={handleSubmit} isLoading={isLoading} lang={lang} />
           <div style={{ borderTop: "1px solid var(--border)" }} />
           <DateFilter range={dateRange} onChange={setDateRange} lang={lang} />
@@ -189,10 +164,9 @@ export default function Home() {
         {state.status === "error" && (
           <div className="rounded-xl p-4 animate-fade-in flex items-start gap-3"
             style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}
-            role="alert"
-          >
-            <span className="text-lg mt-0.5 shrink-0">⚠️</span>
-            <div className="min-w-0">
+            role="alert">
+            <span className="text-lg mt-0.5" style={{ flexShrink: 0 }}>⚠️</span>
+            <div style={{ minWidth: 0 }}>
               <p className="font-semibold text-sm"
                 style={{ color: "#f87171", fontFamily: "var(--font-display)" }}>
                 {t("errorTitle")}
@@ -208,8 +182,7 @@ export default function Home() {
         {state.status === "empty" && (
           <div className="rounded-xl p-6 animate-fade-in text-center"
             style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
-            role="status"
-          >
+            role="status">
             <p className="text-3xl mb-3">📭</p>
             <p className="font-semibold"
               style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
@@ -223,32 +196,26 @@ export default function Home() {
                 </span>
               </p>
             )}
-            <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
-              {t("noTxDesc")}
-            </p>
+            <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>{t("noTxDesc")}</p>
           </div>
         )}
 
         {/* ── RESULTS ────────────────────────────────────────────────────── */}
         {hasResults && (
           <>
-            {/* Transaction count row — stacks vertically on mobile */}
+            {/* Tx count — stacks on mobile */}
             <div className="animate-fade-in flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className="text-2xl font-bold"
-                  style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
-                >
+                <span className="text-2xl font-bold"
+                  style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                   {filteredRows.length.toLocaleString()}
                 </span>
                 <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
                   {filteredRows.length === 1 ? t("txFoundSingle") : t("txFound")}
                 </span>
                 {state.resolvedFrom && (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(249,115,22,0.1)", color: "var(--brand)", fontFamily: "var(--font-mono)" }}
-                  >
+                  <span className="text-xs px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(249,115,22,0.1)", color: "var(--brand)", fontFamily: "var(--font-mono)" }}>
                     {state.resolvedFrom}
                   </span>
                 )}
@@ -262,31 +229,24 @@ export default function Home() {
             <SummaryStats summary={summary} lang={lang} />
 
             {/* Export bar */}
-            <div
-              className="rounded-xl p-4 animate-fade-in flex flex-col gap-3"
-              style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
-            >
-              {/* Buttons — each takes full width on mobile, auto on sm+ */}
+            <div className="rounded-xl p-4 animate-fade-in flex flex-col gap-3"
+              style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}>
+              {/* Buttons: full-width on mobile, auto on sm+ */}
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => downloadCsv(filteredRows, state.address, dateRange)}
                   disabled={noInRange}
                   className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-                    color:      "#fff",
-                    fontFamily: "var(--font-display)",
-                  }}
+                  style={{ background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", color: "#fff", fontFamily: "var(--font-display)" }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
                   </svg>
                   {t("downloadBtn")}
                 </button>
-
                 <button
                   onClick={handleCopyCsv}
                   disabled={noInRange}
@@ -299,26 +259,19 @@ export default function Home() {
                   }}
                 >
                   {csvCopied ? (
-                    <>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      {t("copiedBtn")}
-                    </>
+                    <><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>{t("copiedBtn")}</>
                   ) : (
-                    <>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                      {t("copyBtn")}
-                    </>
+                    <><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>{t("copyBtn")}</>
                   )}
                 </button>
               </div>
-
               <p className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
                 {t("compatNote")}
               </p>
@@ -328,16 +281,13 @@ export default function Home() {
             {noInRange ? (
               <div className="rounded-xl p-6 animate-fade-in text-center"
                 style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
-                role="status"
-              >
+                role="status">
                 <p className="text-3xl mb-3">🗓</p>
                 <p className="font-semibold mb-1"
                   style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                   {t("noTxInRange")}
                 </p>
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                  {t("noTxInRangeHint")}
-                </p>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>{t("noTxInRangeHint")}</p>
               </div>
             ) : (
               <TransactionTable rows={filteredRows} walletAddress={state.address} lang={lang} />
@@ -373,9 +323,8 @@ export default function Home() {
   );
 }
 
-// ─── How it works ─────────────────────────────────────────────────────────
 function HowItWorks({ lang }: { lang: Lang }) {
-  const t     = useTranslations(lang);
+  const t = useTranslations(lang);
   const steps = [
     { icon: "🔍", title: t("step1Title"), desc: t("step1Desc") },
     { icon: "⛓",  title: t("step2Title"), desc: t("step2Desc") },
@@ -395,14 +344,12 @@ function HowItWorks({ lang }: { lang: Lang }) {
               style={{ background: "var(--bg-700)" }}>
               {step.icon}
             </span>
-            <div className="min-w-0">
+            <div style={{ minWidth: 0 }}>
               <p className="font-semibold text-sm"
                 style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 {step.title}
               </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                {step.desc}
-              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{step.desc}</p>
             </div>
           </li>
         ))}
@@ -411,28 +358,27 @@ function HowItWorks({ lang }: { lang: Lang }) {
   );
 }
 
-// ─── Why this tool ─────────────────────────────────────────────────────────
 function WhyThisTool({ lang }: { lang: Lang }) {
   const t      = useTranslations(lang);
   const points = [t("why1"), t("why2"), t("why3")];
   const icons  = [
     <svg key="1" width="15" height="15" viewBox="0 0 24 24" fill="none"
       stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="4" rx="1" />
-      <rect x="2" y="10" width="20" height="4" rx="1" />
-      <rect x="2" y="17" width="20" height="4" rx="1" />
+      <rect x="2" y="3" width="20" height="4" rx="1"/>
+      <rect x="2" y="10" width="20" height="4" rx="1"/>
+      <rect x="2" y="17" width="20" height="4" rx="1"/>
     </svg>,
     <svg key="2" width="15" height="15" viewBox="0 0 24 24" fill="none"
       stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
     </svg>,
     <svg key="3" width="15" height="15" viewBox="0 0 24 24" fill="none"
       stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
     </svg>,
   ];
   return (
