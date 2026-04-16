@@ -1,5 +1,7 @@
 # 🟣 Stacks Tax & Data Export Layer
 
+![Preview](/preview.jpeg)
+
 > A missing data layer for Stacks — export clean, tax-ready STX transactions in seconds.
 
 StacksCSV helps you turn raw blockchain activity into **accurate CSV exports for tax reporting tools like Koinly, CoinTracking, and Awaken**.
