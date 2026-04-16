@@ -53,7 +53,7 @@ Follow the prompts. Zero config required — Vercel auto-detects Next.js.
 ## 📁 Project Structure
 
 ```
-stacks-csv-exporter/
+stackscsv/
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx            # Root layout + SEO metadata
