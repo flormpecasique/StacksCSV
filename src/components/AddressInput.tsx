@@ -7,9 +7,9 @@ interface AddressInputProps {
   isLoading: boolean;
 }
 
-// Stacks address SP... / SM...
+// Stacks address: SP... or SM...
 const STACKS_REGEX = /^S[MP][A-Z0-9]{28,48}$/;
-// BNS name: flor.btc, my-wallet.btc, etc.
+// BNS name: flor.btc | my-wallet.btc | name_123.stx
 const BNS_REGEX = /^[a-zA-Z0-9_-]+\.[a-zA-Z]+$/;
 
 function isValidInput(value: string): boolean {
@@ -25,12 +25,12 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
     const trimmed = address.trim();
 
     if (!trimmed) {
-      setValidationError("Please enter a Stacks wallet address.");
+      setValidationError("Please enter a Stacks address or BNS name.");
       return;
     }
-    if (!STACKS_REGEX.test(trimmed)) {
+    if (!isValidInput(trimmed)) {
       setValidationError(
-        "Invalid format. Stacks addresses start with SP or SM."
+        "Enter a Stacks address (SP...) or a BNS name (e.g. flor.btc)."
       );
       return;
     }
@@ -42,7 +42,7 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
   return (
     <form onSubmit={handleSubmit} className="w-full" noValidate>
       <div className="relative group">
-        {/* Glow border */}
+        {/* Animated glow border on focus */}
         <div
           className="absolute -inset-px rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
           style={{
@@ -51,16 +51,25 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
           }}
         />
 
-        <div className="relative flex items-center rounded-xl overflow-hidden"
+        <div
+          className="relative flex items-center rounded-xl overflow-hidden"
           style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}
         >
           {/* Wallet icon */}
           <span className="pl-4 pr-2 shrink-0">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-              style={{ color: "var(--text-muted)" }}>
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <path d="M16 12a1 1 0 0 0 0 2h4v-2h-4z"/>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <path d="M16 12a1 1 0 0 0 0 2h4v-2h-4z" />
             </svg>
           </span>
 
@@ -71,14 +80,16 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
               setAddress(e.target.value);
               if (validationError) setValidationError("");
             }}
-            placeholder="SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ"
+            placeholder="SP2J6ZY48... or flor.btc"
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
-            autoCapitalize="characters"
-            aria-label="Stacks wallet address"
-            className="flex-1 bg-transparent py-4 pr-2 text-sm font-mono focus:outline-none placeholder:text-zinc-600"
-            style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}
+            aria-label="Stacks wallet address or BNS name"
+            className="flex-1 bg-transparent py-4 pr-2 text-sm focus:outline-none placeholder:text-zinc-600"
+            style={{
+              color: "var(--text-primary)",
+              fontFamily: "var(--font-mono)",
+            }}
             disabled={isLoading}
           />
 
@@ -97,8 +108,19 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
-                <svg className="animate-spin-slow w-4 h-4" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 24"/>
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeDasharray="40 24"
+                  />
                 </svg>
                 Fetching…
               </span>
