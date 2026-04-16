@@ -1,18 +1,15 @@
 /**
  * hiro-api.ts
  * Handles all communication with the Stacks Hiro API.
- * Supports full pagination to retrieve ALL transactions.
+ * Supports full pagination, in-memory cache, and BNS name resolution.
  */
 
 import type { HiroTransaction, HiroTransactionsResponse } from "@/types";
 
 const HIRO_BASE = "https://api.hiro.so";
-const PAGE_LIMIT = 50; // max per Hiro API page
+const PAGE_LIMIT = 50;
 
-// ─── Simple in-memory cache ────────────────────────────────────────────────
-// Key: address  |  Value: { data, cachedAt (ms) }
-// Cache TTL: 2 minutes — keeps repeated exports snappy without serving stale data.
-
+// ─── In-memory cache ───────────────────────────────────────────────────────
 interface CacheEntry {
   transactions: HiroTransaction[];
   total: number;
@@ -32,11 +29,7 @@ function getCached(address: string): CacheEntry | null {
   return entry;
 }
 
-// ─── Core fetcher ──────────────────────────────────────────────────────────
-
-/**
- * Fetches a single page from the Hiro transactions endpoint.
- */
+// ─── Fetch a single page ───────────────────────────────────────────────────
 async function fetchPage(
   address: string,
   offset: number
@@ -45,7 +38,6 @@ async function fetchPage(
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
-    // Next.js server-side fetch — no caching at the fetch level (we handle it ourselves)
     cache: "no-store",
   });
 
@@ -59,37 +51,30 @@ async function fetchPage(
   return res.json() as Promise<HiroTransactionsResponse>;
 }
 
-// ─── Public API ────────────────────────────────────────────────────────────
-
+// ─── Fetch ALL transactions with pagination ────────────────────────────────
 /**
  * Fetches ALL transactions for a given Stacks address, handling pagination.
  * Results are cached in-memory for CACHE_TTL_MS.
- *
- * @param address  A valid Stacks principal address (SP... or SM...)
- * @returns        Array of raw HiroTransaction objects + total count
  */
 export async function fetchAllTransactions(
   address: string
 ): Promise<{ transactions: HiroTransaction[]; total: number }> {
-  // Check cache first
   const cached = getCached(address);
   if (cached) {
     return { transactions: cached.transactions, total: cached.total };
   }
 
-  // Fetch first page to learn the total count
   const firstPage = await fetchPage(address, 0);
   const total = firstPage.total;
   const allTransactions: HiroTransaction[] = [...firstPage.results];
 
-  // If there are more pages, fetch them concurrently in batches of 5
   if (total > PAGE_LIMIT) {
     const remainingOffsets: number[] = [];
     for (let offset = PAGE_LIMIT; offset < total; offset += PAGE_LIMIT) {
       remainingOffsets.push(offset);
     }
 
-    // Batch concurrent fetches (5 at a time) to avoid rate-limiting
+    // Fetch in batches of 5 to avoid rate-limiting
     const BATCH_SIZE = 5;
     for (let i = 0; i < remainingOffsets.length; i += BATCH_SIZE) {
       const batch = remainingOffsets.slice(i, i + BATCH_SIZE);
@@ -100,16 +85,20 @@ export async function fetchAllTransactions(
     }
   }
 
-  // Store in cache
   cache.set(address, {
     transactions: allTransactions,
     total,
     cachedAt: Date.now(),
   });
 
-  /**
+  return { transactions: allTransactions, total };
+}
+
+// ─── BNS Name Resolution ───────────────────────────────────────────────────
+/**
  * Resolves a BNS name (e.g. "flor.btc") to a Stacks SP address.
- * Throws if the name doesn't exist or can't be resolved.
+ * Always lowercases the name before querying.
+ * Throws if the name doesn't exist or has no associated address.
  */
 export async function resolveBnsName(name: string): Promise<string> {
   const url = `${HIRO_BASE}/v1/names/${encodeURIComponent(name.toLowerCase())}`;
@@ -120,20 +109,23 @@ export async function resolveBnsName(name: string): Promise<string> {
   });
 
   if (res.status === 404) {
-    throw new Error(`BNS name "${name}" not found. Check the spelling and try again.`);
+    throw new Error(
+      `BNS name "${name}" not found. Check the spelling and try again.`
+    );
   }
   if (!res.ok) {
-    throw new Error(`Could not resolve BNS name: ${res.status} ${res.statusText}`);
+    throw new Error(
+      `Could not resolve BNS name: ${res.status} ${res.statusText}`
+    );
   }
 
   const data = await res.json();
 
   if (!data?.address) {
-    throw new Error(`BNS name "${name}" exists but has no associated Stacks address.`);
+    throw new Error(
+      `BNS name "${name}" exists but has no associated Stacks address.`
+    );
   }
 
   return data.address as string;
-}
-
-  return { transactions: allTransactions, total };
 }

@@ -2,43 +2,38 @@
  * transform.ts
  * Converts raw Hiro API transactions into clean CSV rows.
  *
- * IMPORTANT RULES:
+ * RULES:
  *  - Only STX token_transfer transactions are processed.
  *  - Only SUCCESSFUL transactions are included.
- *  - microSTX → STX conversion: divide by 1,000,000
- *  - If the queried address is the RECIPIENT  → populate Received columns
- *  - If the queried address is the SENDER     → populate Sent + Fee columns
- *  - Self-transfers (send to yourself)        → populate both Received and Sent
+ *  - microSTX → STX: divide by 1,000,000
+ *  - If the queried address is RECIPIENT  → populate Received columns
+ *  - If the queried address is SENDER     → populate Sent + Fee columns
+ *  - Self-transfers                       → populate both
  */
 
 import type { HiroTransaction, CsvRow } from "@/types";
 
-// 1 STX = 1,000,000 microSTX
 const MICROSTX_PER_STX = 1_000_000;
 
 /**
- * Converts a microSTX string (from the API) to a human-readable STX string.
+ * Converts a microSTX string to a human-readable STX string.
  * Returns empty string for zero or invalid values.
- *
  * @example microStxToStx("1500000") → "1.5"
  */
 function microStxToStx(microStx: string): string {
   const raw = parseInt(microStx, 10);
   if (isNaN(raw) || raw === 0) return "";
-  // Use toFixed(6) then strip trailing zeros
-  const stx = (raw / MICROSTX_PER_STX).toFixed(6).replace(/\.?0+$/, "");
-  return stx;
+  return (raw / MICROSTX_PER_STX).toFixed(6).replace(/\.?0+$/, "");
 }
 
 /**
- * Transforms a raw Hiro transaction into a CsvRow for the given wallet address.
- * Returns null if the transaction should be excluded (wrong type, failed, etc.)
+ * Transforms a single raw Hiro transaction into a CsvRow.
+ * Returns null if the transaction should be excluded.
  */
 function transformTransaction(
   tx: HiroTransaction,
   walletAddress: string
 ): CsvRow | null {
-  // ── Filter: only successful STX token_transfer transactions ──────────────
   if (tx.tx_type !== "token_transfer") return null;
   if (tx.tx_status !== "success") return null;
   if (!tx.token_transfer) return null;
@@ -47,22 +42,17 @@ function transformTransaction(
   const isSender    = tx.sender_address.toLowerCase() === walletAddress.toLowerCase();
   const isRecipient = recipient_address.toLowerCase()  === walletAddress.toLowerCase();
 
-  // Address must be involved in this transaction
   if (!isSender && !isRecipient) return null;
 
-  // ── Build the CSV row ─────────────────────────────────────────────────────
   const stxAmount = microStxToStx(amount);
   const feeAmount = isSender ? microStxToStx(tx.fee_rate) : "";
 
   return {
     date:             tx.burn_block_time_iso,
-    // RECEIVED: populated only when the wallet address is the recipient
     receivedAmount:   isRecipient ? stxAmount : "",
     receivedCurrency: isRecipient ? "STX" : "",
-    // SENT: populated only when the wallet address is the sender
     sentAmount:       isSender ? stxAmount : "",
     sentCurrency:     isSender ? "STX" : "",
-    // FEE: only the sender pays the fee
     feeAmount,
     feeCurrency:      feeAmount ? "STX" : "",
     txHash:           tx.tx_id,
@@ -70,12 +60,8 @@ function transformTransaction(
 }
 
 /**
- * Filters and transforms an array of raw Hiro transactions for a wallet address.
- * Filters out non-STX-transfer and failed transactions, converts microSTX to STX.
- * Returns an array of CsvRow sorted newest-first.
- *
- * @param transactions  Raw HiroTransaction array from the API
- * @param walletAddress The Stacks principal address being queried
+ * Filters and transforms an array of raw Hiro transactions.
+ * Returns CsvRow array sorted newest-first.
  */
 export function transformTransactions(
   transactions: HiroTransaction[],
@@ -88,9 +74,7 @@ export function transformTransactions(
     if (row) rows.push(row);
   }
 
-  // Sort newest first (ISO strings sort correctly lexicographically)
   rows.sort((a, b) => (a.date > b.date ? -1 : 1));
-
   return rows;
 }
 
@@ -98,7 +82,7 @@ export function transformTransactions(
 
 /**
  * Serializes CsvRow array into a valid CSV string.
- * Uses exact column names required by tax software.
+ * Column headers match Koinly / CoinTracking / Awaken format exactly.
  */
 export function rowsToCsv(rows: CsvRow[]): string {
   const HEADERS = [
@@ -113,7 +97,9 @@ export function rowsToCsv(rows: CsvRow[]): string {
   ];
 
   const escape = (val: string) =>
-    val.includes(",") || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
+    val.includes(",") || val.includes('"')
+      ? `"${val.replace(/"/g, '""')}"`
+      : val;
 
   const lines = [
     HEADERS.join(","),
