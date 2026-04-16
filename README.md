@@ -112,23 +112,6 @@ Stacks currently does not have a reliable tax data layer.
 This tool acts as:
 > a lightweight **infrastructure layer for STX transaction exports**
 
----
-
-# 📁 Project Structure
-
-(keep your current structure here)
-
----
-
-# 🔌 API (if applicable)
-
-(keep your API section as is)
-
----
-
-# 🔄 Data model
-
-(keep transformation logic section as is)
 
 ---
 
