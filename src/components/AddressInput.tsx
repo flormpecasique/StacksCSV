@@ -7,8 +7,14 @@ interface AddressInputProps {
   isLoading: boolean;
 }
 
-// Stacks address: SP... or SM... followed by base58 chars
+// Stacks address SP... / SM...
 const STACKS_REGEX = /^S[MP][A-Z0-9]{28,48}$/;
+// BNS name: flor.btc, my-wallet.btc, etc.
+const BNS_REGEX = /^[a-zA-Z0-9_-]+\.[a-zA-Z]+$/;
+
+function isValidInput(value: string): boolean {
+  return STACKS_REGEX.test(value) || BNS_REGEX.test(value);
+}
 
 export default function AddressInput({ onSubmit, isLoading }: AddressInputProps) {
   const [address, setAddress] = useState("");
