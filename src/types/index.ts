@@ -45,6 +45,8 @@ export interface ApiSuccessResponse {
   rows: CsvRow[];
   total: number;
   fetched: number;
+  address: string;       // the resolved SP... address
+  resolvedFrom?: string; // the original BNS name if one was used
 }
 
 export interface ApiErrorResponse {
