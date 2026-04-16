@@ -1,199 +1,169 @@
-# Stacks Tax & Data Export Layer
+# 🟣 Stacks Tax & Data Export Layer
 
-> Export your Stacks (STX) wallet transactions as a CSV file compatible with **Koinly**, **CoinTracking**, and **Awaken** tax software.
+> A missing data layer for Stacks — export clean, tax-ready STX transactions in seconds.
+
+StacksCSV helps you turn raw blockchain activity into **accurate CSV exports for tax reporting tools like Koinly, CoinTracking, and Awaken**.
+
+Built to solve a real problem in the Stacks ecosystem:
+> ❌ Incomplete explorer data  
+> ❌ Manual CSV fixes  
+> ❌ Poor tax tool compatibility  
 
 ---
 
-## 🚀 Quick Start (Local)
+## 🌍 Live App
+👉 https://stackscsv.vercel.app/
 
-### Prerequisites
-- Node.js **18+**
-- npm or yarn
+---
 
-### 1. Clone / download the project
+# 🚨 Problem
+
+Stacks currently lacks a reliable data export layer for tax reporting.
+
+Users often face:
+- broken or incomplete exports from explorers
+- manual data cleaning for tax tools
+- incorrect transaction classification in platforms like Awaken or Koinly
+- no standard format for STX transactions
+
+This results in hours of manual work during tax season.
+
+---
+
+# 💡 Solution
+
+StacksCSV provides:
+
+- Clean STX transaction extraction
+- Tax-ready CSV formatting
+- Date filtering (tax year support)
+- Compatible output for major tax platforms
+- No login, no data storage, fully client-safe
+
+---
+
+# ⚡ Features
+
+### 📤 Export STX transactions
+Convert wallet activity into structured, tax-ready CSV files.
+
+### 📅 Date filtering
+Export only relevant tax periods (e.g. 2023, 2024).
+
+### 📊 Tax summary
+Instant overview:
+- total received
+- total sent
+- total fees
+- transaction count
+
+### 🧾 Tax software compatibility
+Works with:
+- Koinly
+- CoinTracking
+- Awaken
+
+### 🔒 Privacy-first
+- No accounts
+- No data stored
+- Everything processed on demand
+
+---
+
+# 🚀 Quick Start
+
+## Prerequisites
+- Node.js 18+
+
+## Install
+
 ```bash
-git clone https://github.com/your-username/stacks-csv-exporter.git
-cd stacks-csv-exporter
-```
-
-### 2. Install dependencies
-```bash
+git clone https://github.com/your-username/stackscsv.git
+cd stackscsv
 npm install
-```
-
-### 3. Run the dev server
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open:
+👉 http://localhost:3000
 
 ---
 
-## 🌐 Deploy to Vercel
+# 🌐 Deploy
 
-### Option A — Vercel CLI (fastest)
+## Vercel (recommended)
+
+1. Push to GitHub  
+2. Import into Vercel  
+3. Deploy
+
+Or use:
+
 ```bash
-npm install -g vercel
 vercel
 ```
-Follow the prompts. Zero config required — Vercel auto-detects Next.js.
-
-### Option B — GitHub + Vercel Dashboard
-1. Push this project to a GitHub repository
-2. Go to [vercel.com/new](https://vercel.com/new)
-3. Import your repository
-4. Click **Deploy** — no environment variables needed
-
-### Option C — One-click deploy
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
 
 ---
 
-## 📁 Project Structure
+# 🧠 Why this matters
 
-```
-stackscsv/
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx            # Root layout + SEO metadata
-│   │   ├── page.tsx              # Main application page (all UI logic)
-│   │   ├── globals.css           # Tailwind base + custom CSS variables
-│   │   └── api/
-│   │       └── transactions/
-│   │           └── route.ts      # API endpoint: GET /api/transactions?address=...
-│   ├── components/
-│   │   ├── AddressInput.tsx      # Wallet address form with validation
-│   │   ├── TransactionTable.tsx  # Preview table (first 10 rows)
-│   │   ├── DonationSection.tsx   # Donation banner with copy button
-│   │   └── LoadingSkeleton.tsx   # Shimmer loading state
-│   ├── lib/
-│   │   ├── hiro-api.ts           # Hiro API client + pagination + in-memory cache
-│   │   └── transform.ts          # microSTX → STX conversion + CSV generation
-│   └── types/
-│       └── index.ts              # TypeScript interfaces
-├── package.json
-├── tailwind.config.ts
-├── tsconfig.json
-├── next.config.mjs
-└── postcss.config.mjs
-```
+Stacks currently does not have a reliable tax data layer.
+
+This tool acts as:
+> a lightweight **infrastructure layer for STX transaction exports**
 
 ---
 
-## 🔌 API Reference
+# 📁 Project Structure
 
-### `GET /api/transactions?address={stacksAddress}`
-
-**Parameters**
-| Param     | Type   | Required | Description                     |
-|-----------|--------|----------|---------------------------------|
-| `address` | string | ✅        | Stacks principal (SP... or SM...) |
-
-**Success Response (200)**
-```json
-{
-  "rows": [
-    {
-      "date": "2024-01-15T10:23:45.000Z",
-      "receivedAmount": "10.5",
-      "receivedCurrency": "STX",
-      "sentAmount": "",
-      "sentCurrency": "",
-      "feeAmount": "",
-      "feeCurrency": "",
-      "txHash": "0xabc123..."
-    }
-  ],
-  "total": 142,
-  "fetched": 38
-}
-```
-
-**Error Response (400 / 404 / 502)**
-```json
-{ "error": "Invalid Stacks address format." }
-```
+(keep your current structure here)
 
 ---
 
-## 🔄 How Transactions Are Transformed
+# 🔌 API (if applicable)
 
-### Raw Hiro API response (example)
-```json
-{
-  "tx_id": "0x1234abcd...",
-  "tx_type": "token_transfer",
-  "tx_status": "success",
-  "sender_address": "SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ",
-  "fee_rate": "1000",
-  "burn_block_time_iso": "2024-01-15T10:23:45.000Z",
-  "token_transfer": {
-    "recipient_address": "SP3FGQ8Z7JY9BWYZ5WM53E0M9NK7WHJF0691NZ159",
-    "amount": "10500000",
-    "memo": ""
-  }
-}
-```
-
-### Transformation rules
-| Condition | Received | Sent | Fee |
-|-----------|----------|------|-----|
-| Wallet = recipient | `10.5 STX` | — | — |
-| Wallet = sender | — | `10.5 STX` | `0.001 STX` |
-| Wallet = both (self-transfer) | `10.5 STX` | `10.5 STX` | `0.001 STX` |
-
-**microSTX → STX**: divide by `1,000,000`
-- `10500000 microSTX` → `10.5 STX`
-- `1000 microSTX fee` → `0.001 STX`
-
-### Output CSV row
-```
-Date,Received Amount,Received Currency,Sent Amount,Sent Currency,Fee Amount,Fee Currency,TxHash
-2024-01-15T10:23:45.000Z,10.5,STX,,,,,0x1234abcd...
-```
+(keep your API section as is)
 
 ---
 
-## ⚡ Performance Notes
+# 🔄 Data model
 
-- **Pagination**: fetches all pages concurrently in batches of 5 (avoids rate limits)
-- **In-memory cache**: results cached for 2 minutes per address (repeated exports are instant)
-- **No database**: fully stateless — safe to run on Vercel's serverless edge
-- **Minimal JS bundle**: no UI libraries, only Next.js + Tailwind
+(keep transformation logic section as is)
 
 ---
 
-## 🔮 Future Improvements (not implemented)
+# ⚡ Performance
 
-1. **Fungible token transfers** — export SIP-010 token transfers (ALEX, WELSH, etc.)
-2. **Stacking rewards** — detect and export PoX stacking cycle rewards
-3. **Smart contract calls** — parse contract interactions for DeFi protocols
-4. **Date range filter** — let users export a specific year (e.g., for 2023 taxes only)
-5. **Multi-address merge** — combine transactions from several wallets into one CSV
-6. **Hiro API key support** — env variable to raise rate limits for heavy users
-7. **Vercel KV caching** — replace in-memory cache with persistent edge cache
-8. **BNS name resolution** — accept `.btc` names and resolve them to SP addresses
+- Serverless-ready (Vercel optimized)
+- No database required
+- Fast in-memory caching
+- Minimal bundle size (no heavy UI libraries)
 
 ---
 
-## 📄 CSV Column Reference (Tax Software Compatibility)
+# 🔮 Roadmap
 
-| Column | Koinly | CoinTracking | Awaken |
-|--------|--------|--------------|--------|
-| Date | ✅ | ✅ | ✅ |
-| Received Amount | ✅ | ✅ | ✅ |
-| Received Currency | ✅ | ✅ | ✅ |
-| Sent Amount | ✅ | ✅ | ✅ |
-| Sent Currency | ✅ | ✅ | ✅ |
-| Fee Amount | ✅ | ✅ | ✅ |
-| Fee Currency | ✅ | ✅ | ✅ |
-| TxHash | ✅ (as Notes) | ✅ | ✅ |
+- Support for SIP-010 tokens (ALEX, WELSH, etc.)
+- Stacking rewards export (PoX)
+- Smart contract transaction parsing
+- Multi-wallet aggregation
+- .btc name resolution
+- Persistent edge caching (Vercel KV)
 
 ---
 
-## 🧡 Donate
+# 🤝 Use case
 
-If this tool saved you time, consider donating to the developer:
+Perfect for users who need:
+- Stacks tax reporting
+- CSV exports for crypto accountants
+- Year-end transaction summaries
+- Clean data for Awaken / Koinly
 
-**Stacks address:** `flor.btc`
+---
+
+# 🧡 Donate
+
+If this tool saves you time:
+
+**STX Address:** `flor.btc`
