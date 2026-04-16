@@ -12,15 +12,11 @@ interface AddressInputProps {
 const STACKS_REGEX = /^S[MP][A-Z0-9]{28,48}$/;
 const BNS_REGEX    = /^[a-zA-Z0-9_-]+\.[a-zA-Z]+$/;
 
-function isValidInput(value: string): boolean {
-  return STACKS_REGEX.test(value) || BNS_REGEX.test(value);
+function isValidInput(v: string) {
+  return STACKS_REGEX.test(v) || BNS_REGEX.test(v);
 }
 
-export default function AddressInput({
-  onSubmit,
-  isLoading,
-  lang,
-}: AddressInputProps) {
+export default function AddressInput({ onSubmit, isLoading, lang }: AddressInputProps) {
   const t = useTranslations(lang);
   const [address, setAddress]               = useState("");
   const [validationError, setValidationError] = useState("");
@@ -28,7 +24,6 @@ export default function AddressInput({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = address.trim();
-
     if (!trimmed) {
       setValidationError(
         lang === "es"
@@ -40,28 +35,20 @@ export default function AddressInput({
     if (!isValidInput(trimmed)) {
       setValidationError(
         lang === "es"
-          ? "Ingresa una dirección Stacks (SP...) o un nombre BNS (ej. flor.btc)."
-          : "Enter a Stacks address (SP...) or a BNS name (e.g. flor.btc)."
+          ? "Ingresa una dirección SP… o un nombre BNS (ej. flor.btc)."
+          : "Enter a Stacks address (SP…) or a BNS name (e.g. flor.btc)."
       );
       return;
     }
-
     setValidationError("");
     onSubmit(trimmed);
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p
-        className="text-xs font-semibold uppercase tracking-widest"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}
-      >
-        {t("addressLabel")}
-      </p>
-
+    <div className="flex flex-col gap-2">
       <form onSubmit={handleSubmit} className="w-full" noValidate>
         <div className="relative group">
-          {/* Glow border on focus */}
+          {/* Glow on focus */}
           <div
             className="absolute -inset-px rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
             style={{
@@ -69,27 +56,15 @@ export default function AddressInput({
                 "linear-gradient(135deg, rgba(249,115,22,0.5) 0%, transparent 50%, rgba(249,115,22,0.3) 100%)",
             }}
           />
-
           <div
             className="relative flex items-center rounded-xl overflow-hidden"
-            style={{
-              background: "var(--bg-700)",
-              border:     "1px solid var(--border)",
-            }}
+            style={{ background: "var(--bg-700)", border: "1px solid var(--border)" }}
           >
-            {/* Wallet icon */}
+            {/* Icon */}
             <span className="pl-4 pr-2 shrink-0">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ color: "var(--text-muted)" }}
-              >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ color: "var(--text-muted)" }}>
                 <rect x="2" y="5" width="20" height="14" rx="2" />
                 <path d="M16 12a1 1 0 0 0 0 2h4v-2h-4z" />
               </svg>
@@ -108,10 +83,7 @@ export default function AddressInput({
               autoCorrect="off"
               aria-label={t("addressLabel")}
               className="flex-1 bg-transparent py-4 pr-2 text-sm focus:outline-none placeholder:text-zinc-600"
-              style={{
-                color:      "var(--text-primary)",
-                fontFamily: "var(--font-mono)",
-              }}
+              style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}
               disabled={isLoading}
             />
 
@@ -126,49 +98,45 @@ export default function AddressInput({
                   : "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
                 color: isLoading ? "var(--text-muted)" : "#fff",
               }}
-              aria-label="Export transactions"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle
-                      cx="12" cy="12" r="10"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeDasharray="40 24"
-                    />
+                    <circle cx="12" cy="12" r="10" stroke="currentColor"
+                      strokeWidth="3" strokeDasharray="40 24" />
                   </svg>
-                  {lang === "es" ? "Obteniendo…" : "Fetching…"}
+                  {t("fetching")}
                 </span>
               ) : (
-                "Export →"
+                t("exportBtn")
               )}
             </button>
           </div>
         </div>
 
         {validationError && (
-          <p
-            className="mt-2 text-xs animate-fade-in"
-            style={{ color: "#f87171", fontFamily: "var(--font-body)" }}
-            role="alert"
-          >
+          <p className="mt-2 text-xs animate-fade-in"
+            style={{ color: "#f87171", fontFamily: "var(--font-body)" }} role="alert">
             ⚠ {validationError}
           </p>
         )}
       </form>
 
-      <p
-        className="text-xs"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}
-      >
-        {t("addressHint")}{" "}
-        <span
-          style={{ color: "var(--brand)", fontFamily: "var(--font-mono)" }}
-        >
-          flor.btc
-        </span>
-      </p>
+      {/* Example + trust signals */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+        <p className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+          {t("addressExample")}
+        </p>
+        <p className="flex items-center gap-1 text-xs"
+          style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          {t("noDataStored")}
+        </p>
+      </div>
     </div>
   );
 }
