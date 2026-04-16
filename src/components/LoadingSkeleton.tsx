@@ -1,7 +1,14 @@
-export default function LoadingSkeleton() {
+import { type Lang, useTranslations } from "@/lib/i18n";
+
+export default function LoadingSkeleton({ lang }: { lang: Lang }) {
+  const t = useTranslations(lang);
+
   return (
-    <div className="animate-fade-in space-y-3" aria-busy="true" aria-label="Loading transactions…">
-      {/* Status bar */}
+    <div
+      className="animate-fade-in space-y-3"
+      aria-busy="true"
+      aria-label={t("loadingText")}
+    >
       <div className="flex items-center gap-2 mb-4">
         <svg
           className="w-4 h-4 animate-spin"
@@ -9,37 +16,44 @@ export default function LoadingSkeleton() {
           fill="none"
           style={{ color: "var(--brand)" }}
         >
-          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 24"/>
+          <circle
+            cx="12" cy="12" r="10"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeDasharray="40 24"
+          />
         </svg>
-        <span className="text-sm" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}>
-          Fetching all transactions from Stacks blockchain…
+        <span
+          className="text-sm"
+          style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}
+        >
+          {t("loadingText")}
         </span>
       </div>
 
-      {/* Skeleton rows */}
       <div
         className="rounded-xl overflow-hidden"
         style={{ border: "1px solid var(--border)" }}
       >
-        {/* Header */}
         <div
           className="grid grid-cols-5 gap-4 px-4 py-3"
-          style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-900)" }}
+          style={{
+            borderBottom: "1px solid var(--border)",
+            background:   "var(--bg-900)",
+          }}
         >
-          {["Date", "Direction", "Amount", "Fee", "Tx Hash"].map((h) => (
-            <div key={h} className="h-3 rounded skeleton" style={{ width: "60%" }} />
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-3 rounded skeleton" style={{ width: "60%" }} />
           ))}
         </div>
 
-        {/* Rows */}
-        {Array.from({ length: 6 }).map((_, i) => (
+        {[...Array(6)].map((_, i) => (
           <div
             key={i}
             className="grid grid-cols-5 gap-4 px-4 py-3"
             style={{
               borderBottom: i < 5 ? "1px solid var(--border)" : "none",
-              background: "var(--bg-900)",
-              animationDelay: `${i * 80}ms`,
+              background:   "var(--bg-900)",
             }}
           >
             <div className="h-3 rounded skeleton" style={{ width: "80%" }} />
