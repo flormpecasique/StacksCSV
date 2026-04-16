@@ -107,5 +107,33 @@ export async function fetchAllTransactions(
     cachedAt: Date.now(),
   });
 
+  /**
+ * Resolves a BNS name (e.g. "flor.btc") to a Stacks SP address.
+ * Throws if the name doesn't exist or can't be resolved.
+ */
+export async function resolveBnsName(name: string): Promise<string> {
+  const url = `${HIRO_BASE}/v1/names/${encodeURIComponent(name.toLowerCase())}`;
+
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (res.status === 404) {
+    throw new Error(`BNS name "${name}" not found. Check the spelling and try again.`);
+  }
+  if (!res.ok) {
+    throw new Error(`Could not resolve BNS name: ${res.status} ${res.statusText}`);
+  }
+
+  const data = await res.json();
+
+  if (!data?.address) {
+    throw new Error(`BNS name "${name}" exists but has no associated Stacks address.`);
+  }
+
+  return data.address as string;
+}
+
   return { transactions: allTransactions, total };
 }
