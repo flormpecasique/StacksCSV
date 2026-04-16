@@ -14,36 +14,6 @@ interface DateFilterProps {
   lang:     Lang;
 }
 
-/*
-  Safari/iPadOS quirk with input[type="date"]:
-  The native date control renders a hidden calendar icon and clear button
-  that can extend outside the element's layout box.
-  Fixes applied:
-    1. gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)"
-       — "1fr" alone has min-width:auto which lets content overflow the column.
-       — "minmax(0, 1fr)" hard-caps the column at its available space.
-    2. overflow: "hidden" on the grid wrapper — clips anything that bleeds out.
-    3. maxWidth: "100%", width: "100%", boxSizing: "border-box" on each input.
-*/
-
-// Shared styles for both date inputs
-const dateInputStyle: React.CSSProperties = {
-  display:      "block",
-  width:        "100%",
-  maxWidth:     "100%",
-  minWidth:     0,           /* allow column to shrink it */
-  boxSizing:    "border-box",
-  padding:      "9px 12px",
-  borderRadius: "10px",
-  fontSize:     "14px",
-  background:   "var(--bg-700)",
-  border:       "1px solid var(--border)",
-  color:        "var(--text-primary)",
-  fontFamily:   "var(--font-mono)",
-  colorScheme:  "dark",
-  outline:      "none",
-};
-
 export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
   const t = useTranslations(lang);
 
@@ -60,65 +30,132 @@ export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 
-      {/* Label */}
-      <p
-        style={{
-          fontSize:      "11px",
-          fontWeight:    600,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color:         "var(--text-muted)",
-          fontFamily:    "var(--font-display)",
-          margin:        0,
-        }}
-      >
+      {/* Section label */}
+      <p style={{
+        margin: 0,
+        fontSize: "11px",
+        fontWeight: 600,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        color: "var(--text-muted)",
+        fontFamily: "var(--font-display)",
+      }}>
         {t("filterTitle")}
       </p>
 
       {/*
-        Grid container.
-        overflow:hidden is the critical Safari fix — it clips the native
-        date-picker chrome that would otherwise bleed outside the card.
-        minmax(0, 1fr) ensures columns can never exceed their allocated space.
+        Unified date range container.
+        Looks like ONE element, not two separate inputs.
+        Overflow:hidden clips the native Safari date-picker chrome.
       */}
-      <div
-        style={{
-          display:             "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-          gap:                 "8px",
-          overflow:            "hidden",
-          width:               "100%",
-        }}
-      >
-        {/* FROM */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
-          <label
-            style={{ fontSize: "12px", color: "var(--text-muted)", fontFamily: "var(--font-body)" }}
-          >
+      <div style={{
+        display:      "flex",
+        alignItems:   "stretch",
+        borderRadius: "12px",
+        overflow:     "hidden",
+        border:       "1px solid var(--border)",
+        background:   "var(--bg-700)",
+        width:        "100%",
+        boxSizing:    "border-box",
+      }}>
+
+        {/* FROM field */}
+        <div style={{
+          flex:           "1 1 0%",
+          minWidth:       0,
+          display:        "flex",
+          flexDirection:  "column",
+          padding:        "10px 14px 10px 14px",
+          boxSizing:      "border-box",
+        }}>
+          <span style={{
+            fontSize:   "10px",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color:      "var(--text-muted)",
+            fontFamily: "var(--font-display)",
+            marginBottom: "4px",
+            display:    "block",
+          }}>
             {t("from")}
-          </label>
+          </span>
           <input
             type="date"
             value={range.from}
             max={range.to || undefined}
             onChange={(e) => onChange({ ...range, from: e.target.value })}
-            style={dateInputStyle}
+            style={{
+              background:  "transparent",
+              border:      "none",
+              outline:     "none",
+              color:       "var(--text-primary)",
+              fontFamily:  "var(--font-mono)",
+              fontSize:    "14px",
+              fontWeight:  500,
+              width:       "100%",
+              minWidth:    0,
+              maxWidth:    "100%",
+              padding:     0,
+              margin:      0,
+              boxSizing:   "border-box",
+              colorScheme: "dark",
+              cursor:      "pointer",
+            }}
           />
         </div>
 
-        {/* TO */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
-          <label
-            style={{ fontSize: "12px", color: "var(--text-muted)", fontFamily: "var(--font-body)" }}
-          >
+        {/* Vertical divider — a thin line, not a gap */}
+        <div style={{
+          width:      "1px",
+          background: "var(--border)",
+          flexShrink: 0,
+          alignSelf:  "stretch",
+        }} />
+
+        {/* TO field */}
+        <div style={{
+          flex:           "1 1 0%",
+          minWidth:       0,
+          display:        "flex",
+          flexDirection:  "column",
+          padding:        "10px 14px 10px 14px",
+          boxSizing:      "border-box",
+        }}>
+          <span style={{
+            fontSize:   "10px",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color:      "var(--text-muted)",
+            fontFamily: "var(--font-display)",
+            marginBottom: "4px",
+            display:    "block",
+          }}>
             {t("to")}
-          </label>
+          </span>
           <input
             type="date"
             value={range.to}
             min={range.from || undefined}
             onChange={(e) => onChange({ ...range, to: e.target.value })}
-            style={dateInputStyle}
+            style={{
+              background:  "transparent",
+              border:      "none",
+              outline:     "none",
+              color:       "var(--text-primary)",
+              fontFamily:  "var(--font-mono)",
+              fontSize:    "14px",
+              fontWeight:  500,
+              width:       "100%",
+              minWidth:    0,
+              maxWidth:    "100%",
+              padding:     0,
+              margin:      0,
+              boxSizing:   "border-box",
+              colorScheme: "dark",
+              cursor:      "pointer",
+            }}
           />
         </div>
       </div>
@@ -140,7 +177,7 @@ export default function DateFilter({ range, onChange, lang }: DateFilterProps) {
                 fontWeight:   active ? 600 : 400,
                 background:   active
                   ? "linear-gradient(135deg, #f97316 0%, #ea580c 100%)"
-                  : "var(--bg-700)",
+                  : "var(--bg-600)",
                 color:        active ? "#fff" : "var(--text-secondary)",
                 border:       active ? "1px solid transparent" : "1px solid var(--border)",
                 cursor:       "pointer",
