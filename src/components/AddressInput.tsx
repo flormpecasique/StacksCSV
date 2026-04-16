@@ -11,6 +11,7 @@ interface AddressInputProps {
 
 const STACKS_REGEX = /^S[MP][A-Z0-9]{28,48}$/;
 const BNS_REGEX    = /^[a-zA-Z0-9_-]+\.[a-zA-Z]+$/;
+
 function isValidInput(v: string) {
   return STACKS_REGEX.test(v) || BNS_REGEX.test(v);
 }
@@ -40,47 +41,65 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <form onSubmit={handleSubmit} className="w-full" noValidate>
-        <div className="relative group">
-          {/* Glow border */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <form onSubmit={handleSubmit} style={{ width: "100%" }} noValidate>
+
+        {/* Outer wrapper for the glow effect */}
+        <div style={{ position: "relative" }} className="group">
+
+          {/* Animated glow border on focus */}
           <div
             className="absolute -inset-px rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
             style={{
-              background: "linear-gradient(135deg, rgba(249,115,22,0.5) 0%, transparent 50%, rgba(249,115,22,0.3) 100%)",
+              background:
+                "linear-gradient(135deg, rgba(249,115,22,0.5) 0%, transparent 50%, rgba(249,115,22,0.3) 100%)",
             }}
           />
 
           {/*
-            Key fix: `min-w-0` on the wrapper + `flex` with `overflow-hidden`
-            prevents the input from pushing the button off-screen.
+            Inner row.
+            overflow:hidden clips the button corners.
+            We do NOT set paddingLeft here — we control spacing via the icon gap.
           */}
           <div
-            className="relative flex items-center rounded-xl overflow-hidden"
-            style={{ background: "var(--bg-700)", border: "1px solid var(--border)" }}
+            style={{
+              position:    "relative",
+              display:     "flex",
+              alignItems:  "center",
+              borderRadius: "12px",
+              overflow:    "hidden",
+              background:  "var(--bg-700)",
+              border:      "1px solid var(--border)",
+              /* Explicit left padding so icon has breathing room */
+              paddingLeft: "14px",
+            }}
           >
-            {/* Wallet icon — hidden on very small screens to save space */}
-            <span className="hidden xs:flex pl-4 pr-2 shrink-0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                style={{ color: "var(--text-muted)" }}>
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <path d="M16 12a1 1 0 0 0 0 2h4v-2h-4z" />
-              </svg>
-            </span>
-            {/* Also show icon on sm+ regardless */}
-            <span className="flex sm:hidden pl-3 pr-1 shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                style={{ color: "var(--text-muted)" }}>
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <path d="M16 12a1 1 0 0 0 0 2h4v-2h-4z" />
-              </svg>
-            </span>
+            {/*
+              Icon — always rendered, no Tailwind breakpoint classes.
+              flexShrink:0 stops it from collapsing.
+            */}
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ color: "var(--text-muted)", flexShrink: 0 }}
+            >
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <path d="M16 12a1 1 0 0 0 0 2h4v-2h-4z" />
+            </svg>
 
             {/*
-              `min-w-0` is critical: flex children default to min-width: auto
-              which forces the container to grow. min-w-0 lets it shrink.
+              Input.
+              flex:1 + minWidth:0 is the key combination:
+                - flex:1 lets it grow to fill available space
+                - minWidth:0 lets it shrink below its content width
+              Without minWidth:0, a long placeholder forces the container wider.
+              paddingLeft gives the gap between the icon and the cursor.
             */}
             <input
               type="text"
@@ -93,57 +112,121 @@ export default function AddressInput({ onSubmit, isLoading, lang }: AddressInput
               spellCheck={false}
               autoComplete="off"
               autoCorrect="off"
+              autoCapitalize="off"
               aria-label={t("addressLabel")}
-              className="flex-1 min-w-0 bg-transparent py-3.5 pr-1 text-sm focus:outline-none placeholder:text-zinc-600"
-              style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}
               disabled={isLoading}
+              style={{
+                flex:          "1 1 0%",
+                minWidth:      0,
+                background:    "transparent",
+                border:        "none",
+                outline:       "none",
+                paddingTop:    "14px",
+                paddingBottom: "14px",
+                paddingLeft:   "10px",
+                paddingRight:  "6px",
+                fontSize:      "14px",
+                color:         "var(--text-primary)",
+                fontFamily:    "var(--font-mono)",
+              }}
             />
 
-            {/* Button — shrink-0 keeps it from collapsing */}
+            {/*
+              Button.
+              flexShrink:0 keeps it at a fixed size — it never shrinks.
+              whiteSpace:nowrap prevents the label from wrapping.
+            */}
             <button
               type="submit"
               disabled={isLoading || !address.trim()}
-              className="shrink-0 m-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               style={{
-                fontFamily: "var(--font-display)",
-                background: isLoading ? "var(--bg-600)" : "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-                color: isLoading ? "var(--text-muted)" : "#fff",
+                flexShrink:   0,
+                margin:       "6px",
+                padding:      "9px 20px",
+                borderRadius: "8px",
+                fontSize:     "14px",
+                fontWeight:   600,
+                fontFamily:   "var(--font-display)",
+                background:   isLoading
+                  ? "var(--bg-600)"
+                  : "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+                color:        isLoading ? "var(--text-muted)" : "#fff",
+                border:       "none",
+                cursor:       isLoading || !address.trim() ? "not-allowed" : "pointer",
+                opacity:      isLoading || !address.trim() ? 0.4 : 1,
+                transition:   "opacity 0.2s",
+                whiteSpace:   "nowrap",
               }}
             >
               {isLoading ? (
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 24" />
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }}
+                  >
+                    <circle cx="12" cy="12" r="10"
+                      stroke="currentColor" strokeWidth="3" strokeDasharray="40 24" />
                   </svg>
-                  {/* Hide text on very small screens to save space */}
-                  <span className="hidden sm:inline">{t("fetching")}</span>
+                  {t("fetching")}
                 </span>
               ) : (
-                <>
-                  <span className="hidden sm:inline">{t("exportBtn")}</span>
-                  {/* Arrow-only on tiny screens */}
-                  <span className="sm:hidden">→</span>
-                </>
+                t("exportBtn")
               )}
             </button>
           </div>
         </div>
 
         {validationError && (
-          <p className="mt-2 text-xs animate-fade-in"
-            style={{ color: "#f87171", fontFamily: "var(--font-body)" }} role="alert">
+          <p
+            className="animate-fade-in"
+            style={{
+              marginTop:  "8px",
+              fontSize:   "12px",
+              color:      "#f87171",
+              fontFamily: "var(--font-body)",
+            }}
+            role="alert"
+          >
             ⚠ {validationError}
           </p>
         )}
       </form>
 
-      {/* Example + trust signal — stack on mobile */}
-      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1">
-        <p className="text-xs truncate" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+      {/* Example + trust signal */}
+      <div
+        style={{
+          display:        "flex",
+          flexWrap:       "wrap",
+          alignItems:     "center",
+          justifyContent: "space-between",
+          gap:            "4px",
+        }}
+      >
+        <p
+          style={{
+            fontSize:     "12px",
+            color:        "var(--text-muted)",
+            fontFamily:   "var(--font-mono)",
+            overflow:     "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace:   "nowrap",
+            maxWidth:     "55%",
+          }}
+        >
           {t("addressExample")}
         </p>
-        <p className="flex items-center gap-1 text-xs shrink-0"
-          style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
+        <p
+          style={{
+            display:    "flex",
+            alignItems: "center",
+            gap:        "4px",
+            fontSize:   "12px",
+            color:      "var(--text-muted)",
+            fontFamily: "var(--font-body)",
+            flexShrink: 0,
+          }}
+        >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
