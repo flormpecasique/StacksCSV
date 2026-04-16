@@ -1,4 +1,4 @@
-# Stacks CSV Exporter
+# Stacks Tax & Data Export Layer
 
 > Export your Stacks (STX) wallet transactions as a CSV file compatible with **Koinly**, **CoinTracking**, and **Awaken** tax software.
 
