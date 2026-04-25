@@ -8,6 +8,8 @@ interface Props {
   lang:    Lang;
 }
 
+const VISIBLE_TOKEN_LIMIT = 4;
+
 function fmt(n: number, decimals = 6): string {
   if (n === 0) return "0";
   return n
@@ -22,6 +24,13 @@ export default function SummaryStats({ summary, lang }: Props) {
 
   const btcEntry    = tokenSummary.find(e => e.currency === "BTC");
   const otherTokens = tokenSummary.filter(e => e.currency !== "BTC");
+
+  // Build the visible token list (first N, then "+M more")
+  const visibleSymbols = otherTokens.slice(0, VISIBLE_TOKEN_LIMIT).map(tk => tk.currency);
+  const hiddenCount    = Math.max(0, otherTokens.length - VISIBLE_TOKEN_LIMIT);
+  const symbolsLine    = hiddenCount > 0
+    ? `${visibleSymbols.join(" · ")} · +${hiddenCount} ${t("moreTokens")}`
+    : visibleSymbols.join(" · ");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -79,41 +88,66 @@ export default function SummaryStats({ summary, lang }: Props) {
         </div>
       )}
 
-      {/* ── Other FT Tokens ── */}
+      {/*
+        ── Other tokens — condensed informational line ──
+        Replaces the previous detailed list. Reasoning:
+          - Per-token totals on the dashboard add no decision value (every
+            movement is already in the CSV row-by-row).
+          - A confirming line ("included in CSV") removes user uncertainty.
+          - Visual weight now matches relative importance: STX > BTC > FTs.
+      */}
       {otherTokens.length > 0 && (
         <div style={{
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "12px", padding: "16px",
+          display:        "flex",
+          alignItems:     "flex-start",
+          gap:            "12px",
+          background:     "rgba(255,255,255,0.03)",
+          border:         "1px solid rgba(255,255,255,0.06)",
+          borderRadius:   "10px",
+          padding:        "12px 14px",
         }}>
-          <div style={{
-            fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em",
-            color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: "12px",
-          }}>
-            {t("otherTokens")}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {otherTokens.map((token) => (
-              <div key={token.currency} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: "8px",
-              }}>
-                <span style={{ fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
-                  {token.currency}
-                </span>
-                <div style={{ textAlign: "right" }}>
-                  {token.received > 0 && (
-                    <div style={{ fontSize: "13px", color: "#4ade80", fontFamily: "monospace" }}>
-                      +{fmt(token.received)}
-                    </div>
-                  )}
-                  {token.sent > 0 && (
-                    <div style={{ fontSize: "13px", color: "#f87171", fontFamily: "monospace" }}>
-                      -{fmt(token.sent)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+          <span style={{ fontSize: "16px", flexShrink: 0, lineHeight: 1.3 }}>🪙</span>
+
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{
+              fontSize:     "13px",
+              color:        "rgba(255,255,255,0.75)",
+              margin:       0,
+              marginBottom: "3px",
+            }}>
+              <strong style={{ color: "rgba(255,255,255,0.95)", fontWeight: 600 }}>
+                {otherTokens.length}
+              </strong>
+              {" "}
+              {otherTokens.length === 1 ? t("otherTokensFound") : t("otherTokensFoundP")}
+            </p>
+
+            <p style={{
+              fontSize:     "12px",
+              fontFamily:   "var(--font-mono)",
+              color:        "rgba(255,255,255,0.5)",
+              margin:       0,
+              marginBottom: "6px",
+              wordBreak:    "break-word",
+            }}>
+              {symbolsLine}
+            </p>
+
+            <p style={{
+              fontSize: "11px",
+              color:    "rgba(74,222,128,0.7)",
+              margin:   0,
+              display:  "flex",
+              alignItems: "center",
+              gap:      "4px",
+            }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                style={{ flexShrink: 0 }}>
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {t("otherTokensInCsv")}
+            </p>
           </div>
         </div>
       )}
