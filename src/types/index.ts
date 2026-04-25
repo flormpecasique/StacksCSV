@@ -1,110 +1,81 @@
-// ─── Raw Hiro API Types ────────────────────────────────────────────────────
+// ─── Hiro API types ───────────────────────────────────────────────────────────
 
-/**
- * Raw transaction shape from /extended/v1/address/{addr}/transactions_with_transfers
- * Includes both STX and FT (SIP-010) transfer events.
- *
- * Key date fields:
- *   burn_block_time_iso  — Bitcoin anchor block timestamp (pre-Nakamoto, always present)
- *   block_time_iso       — Stacks block timestamp (Nakamoto+, more precise)
- */
+export interface HiroTransactionWithTransfers {
+  tx: HiroTransaction;
+  stx_sent:      string;
+  stx_received:  string;
+  stx_transfers: StxTransfer[];
+  ft_transfers:  FtTransfer[];
+  nft_transfers: unknown[];
+}
+
 export interface HiroTransaction {
-  tx_id:      string;
-  tx_type:    "token_transfer" | "smart_contract" | "contract_call" | "coinbase" | "poison_microblock";
-  tx_status:  "success" | "abort_by_response" | "abort_by_post_condition" | "pending";
-  sender_address: string;
-  fee_rate:   string;           // microSTX as string
-
-  // Timestamps — use block_time_iso when available (Nakamoto), else burn_block_time_iso
-  burn_block_time:     number;  // Unix seconds (Bitcoin anchor)
-  burn_block_time_iso: string;  // ISO 8601 UTC
-  block_time?:         number;  // Unix seconds (Stacks block, Nakamoto only)
-  block_time_iso?:     string;  // ISO 8601 UTC (Stacks block, Nakamoto only)
-
-  // Present only for tx_type === "token_transfer"
+  tx_id:             string;
+  tx_type:           string;   // "token_transfer" | "contract_call" | "coinbase" | ...
+  tx_status:         string;   // "success" | "abort_by_response" | ...
+  block_time_iso?:   string;
+  burn_block_time_iso?: string;
+  burn_block_time?:  number;
+  sender_address:    string;
+  fee_rate:          string;
+  contract_call?: {
+    contract_id:     string;
+    function_name:   string;
+  };
   token_transfer?: {
     recipient_address: string;
-    amount:            string;  // microSTX
+    amount:            string;
     memo:              string;
   };
 }
 
-/**
- * FT (SIP-010 fungible token) transfer event within a transaction.
- * Returned by the transactions_with_transfers endpoint.
- */
-export interface FtTransfer {
-  asset_identifier: string;   // e.g. "SP2XD7417HGPRTREMKF748VNEQPDRR0RMANB7X1NK.token-alex::alex"
-  amount:           string;   // raw integer amount (needs decimals conversion)
-  sender:           string;   // Stacks address
-  recipient:        string;   // Stacks address
-}
-
-/**
- * STX transfer event within a transaction (detail level).
- */
 export interface StxTransfer {
-  amount:    string;          // microSTX
-  sender:    string;
-  recipient: string;
+  amount:    string;
+  sender?:   string;
+  recipient?: string;
 }
 
-/**
- * One item from /extended/v1/address/{addr}/transactions_with_transfers
- */
-export interface HiroTransactionWithTransfers {
-  tx:            HiroTransaction;
-  stx_sent:      string;      // total microSTX sent in this tx
-  stx_received:  string;      // total microSTX received
-  stx_transfers: StxTransfer[];
-  ft_transfers:  FtTransfer[];
+export interface FtTransfer {
+  amount:          string;
+  asset_identifier: string;   // e.g. "SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token::age000-governance-token"
+  sender?:         string;
+  recipient?:      string;
 }
-
-export interface HiroTransactionsWithTransfersResponse {
-  limit:   number;
-  offset:  number;
-  total:   number;
-  results: HiroTransactionWithTransfers[];
-}
-
-// ─── Token metadata from Hiro Token Metadata API ──────────────────────────
 
 export interface TokenMetadata {
-  symbol:   string;   // e.g. "ALEX", "WELSH", "sBTC"
-  decimals: number;   // e.g. 8
-  name:     string;   // e.g. "Alex Lab Token"
+  symbol:   string;
+  decimals: number;
+  name:     string;
 }
 
-// ─── Transformed / Exported Types ─────────────────────────────────────────
+// ─── CSV row ──────────────────────────────────────────────────────────────────
 
 /**
- * A single CSV row — one entry per token transfer event.
- * Multiple rows can share the same txHash (one STX + multiple FTs).
+ * One row in the exported CSV.
  *
- * Mirrors Koinly / Awaken / CoinTracking import format.
+ * Compatible with Koinly, CoinTracking, and Awaken import formats.
+ *
+ * txType values:
+ *   "STX Transfer"           – direct STX send/receive
+ *   "FT Transfer"            – SIP-010 fungible token transfer
+ *   "Contract Call"          – generic Clarity contract call
+ *   "Stacking Reward (PoX)"  – BTC reward from Proof-of-Transfer
  */
 export interface CsvRow {
   date:             string;   // ISO 8601 UTC
-  receivedAmount:   string;   // token amount (empty if sender)
-  receivedCurrency: string;   // "STX", "ALEX", "sBTC"… or ""
-  sentAmount:       string;   // token amount (empty if recipient)
-  sentCurrency:     string;   // token ticker or ""
-  feeAmount:        string;   // STX (only for the sender, first row of the tx)
-  feeCurrency:      string;   // "STX" or ""
+  receivedAmount:   string;
+  receivedCurrency: string;
+  sentAmount:       string;
+  sentCurrency:     string;
+  feeAmount:        string;
+  feeCurrency:      string;
   txHash:           string;
-  txType:           string;   // "STX Transfer" | "FT Transfer" | etc. (informational)
+  txType:           string;
 }
 
-// ─── API Route Types ───────────────────────────────────────────────────────
+// ─── API response ─────────────────────────────────────────────────────────────
 
 export interface ApiSuccessResponse {
-  rows:          CsvRow[];
-  total:         number;
-  fetched:       number;
-  address:       string;
-  resolvedFrom?: string;
-}
-
-export interface ApiErrorResponse {
-  error: string;
+  address: string;
+  rows:    CsvRow[];
 }
