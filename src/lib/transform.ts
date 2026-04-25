@@ -1,28 +1,6 @@
 /**
  * transform.ts
  * Converts raw Hiro API transactions_with_transfers into clean CsvRows.
- *
- * KEY UPGRADES vs v1:
- *
- * 1. DATE FIX (Nakamoto compatibility)
- *    Pre-Nakamoto: use burn_block_time_iso (Bitcoin anchor timestamp)
- *    Post-Nakamoto: use block_time_iso (actual Stacks block time, more precise)
- *    Fallback: derive from burn_block_time unix seconds if ISO strings are missing/zero.
- *
- * 2. FT TRANSFER SUPPORT (SIP-010 tokens)
- *    Each transaction can have multiple ft_transfers.
- *    Each produces its own CsvRow with the correct token symbol + amount.
- *    The tx fee (STX) is credited to the FIRST row only.
- *
- * 3. AMOUNT PRECISION
- *    STX: divide by 1_000_000 (6 decimals)
- *    FT: divide by 10^decimals (8 for ALEX/sBTC/xBTC, 6 for most others, 0 for some)
- *
- * RULES (unchanged):
- *  - Only SUCCESSFUL transactions are exported
- *  - If user is RECIPIENT  → Received columns
- *  - If user is SENDER     → Sent columns + Fee (first row only)
- *  - Self-transfer         → Both Received and Sent
  */
 
 import type { HiroTransactionWithTransfers, FtTransfer, CsvRow } from "@/types";
@@ -34,51 +12,52 @@ import { getTokenMetadata } from "@/lib/hiro-api";
  * Returns the most accurate ISO timestamp for a transaction.
  *
  * Priority:
- *   1. block_time_iso  — Stacks block time (Nakamoto, most accurate)
- *   2. burn_block_time_iso — Bitcoin anchor block time (pre-Nakamoto)
- *   3. Derived from unix timestamp burn_block_time * 1000
+ *   1. block_time_iso       — Stacks block time (Nakamoto, ~5s precision)
+ *   2. burn_block_time_iso  — Bitcoin anchor (pre-Nakamoto, ~10min granularity)
+ *   3. Derive from Unix seconds (block_time → burn_block_time)
+ *   4. Epoch 0 — explicit "missing" marker (NEVER current time, that's misleading)
  *
- * A value of 0 or epoch (1970-01-01) is treated as "missing".
+ * IMPORTANT: We trust the ISO string on its own without requiring the matching
+ * Unix timestamp to also be present. The Hiro API sometimes returns only one
+ * of the pair; rejecting valid ISO strings just because the Unix counterpart
+ * is missing causes us to fall through to a wrong date.
  */
 export function resolveTransactionDate(tx: HiroTransactionWithTransfers["tx"]): string {
-  const EPOCH_THRESHOLD = 1_000_000; // any Unix ts < this is clearly wrong (year 1970)
-
-  // 1. Nakamoto block_time_iso
-  if (
-    tx.block_time_iso &&
-    tx.block_time &&
-    tx.block_time > EPOCH_THRESHOLD
-  ) {
-    return tx.block_time_iso;
+  // Validate an ISO string by parsing it. Rejects empty, invalid, or epoch-1970 values.
+  function tryIso(iso: string | undefined | null): string | null {
+    if (!iso) return null;
+    const ms = Date.parse(iso);
+    if (isNaN(ms))                  return null;
+    if (ms < 1_000_000_000_000)     return null; // before 2001 = clearly bogus
+    return iso;
   }
 
-  // 2. Burn block (Bitcoin anchor) — pre-Nakamoto
-  if (
-    tx.burn_block_time_iso &&
-    tx.burn_block_time &&
-    tx.burn_block_time > EPOCH_THRESHOLD
-  ) {
-    return tx.burn_block_time_iso;
-  }
+  // 1. Stacks block time (Nakamoto, most accurate)
+  const stacksIso = tryIso(tx.block_time_iso);
+  if (stacksIso) return stacksIso;
 
-  // 3. Derive from unix timestamp
-  if (tx.burn_block_time && tx.burn_block_time > EPOCH_THRESHOLD) {
+  // 2. Bitcoin anchor block time (pre-Nakamoto, or Nakamoto fallback)
+  const burnIso = tryIso(tx.burn_block_time_iso);
+  if (burnIso) return burnIso;
+
+  // 3. Derive from Unix timestamps (in seconds)
+  const UNIX_2001 = 1_000_000_000;
+  if (tx.block_time && tx.block_time > UNIX_2001) {
+    return new Date(tx.block_time * 1000).toISOString();
+  }
+  if (tx.burn_block_time && tx.burn_block_time > UNIX_2001) {
     return new Date(tx.burn_block_time * 1000).toISOString();
   }
 
-  // 4. Last resort (should never happen for confirmed txs)
-  return new Date().toISOString();
+  // 4. Last resort: epoch 0 (1970-01-01).
+  //    DO NOT use new Date().toISOString() — that puts the CURRENT time on
+  //    every transaction with missing data, which is silently wrong.
+  //    Showing 1970 makes broken data obvious instead of plausibly wrong.
+  return new Date(0).toISOString();
 }
 
 // ─── Amount conversion ──────────────────────────────────────────────────────
 
-/**
- * Converts a raw integer amount string to a human-readable decimal string.
- * Strips trailing zeros. Returns "" for zero/invalid.
- *
- * @example rawToDecimal("150000000", 8) → "1.5"
- * @example rawToDecimal("1000000",   6) → "1"
- */
 export function rawToDecimal(raw: string, decimals: number): string {
   const value = parseInt(raw, 10);
   if (isNaN(value) || value === 0) return "";
@@ -87,15 +66,10 @@ export function rawToDecimal(raw: string, decimals: number): string {
   return (value / divisor).toFixed(decimals).replace(/\.?0+$/, "");
 }
 
-// micro-STX has 6 decimals
 const microStxToStx = (raw: string) => rawToDecimal(raw, 6);
 
 // ─── STX transfer rows ──────────────────────────────────────────────────────
 
-/**
- * Builds CsvRow(s) for the STX token_transfer in a transaction.
- * Returns [] if the transaction is not a token_transfer or doesn't involve the wallet.
- */
 function stxRows(
   item: HiroTransactionWithTransfers,
   walletAddress: string,
@@ -128,11 +102,6 @@ function stxRows(
 
 // ─── FT transfer rows ───────────────────────────────────────────────────────
 
-/**
- * Builds CsvRow(s) for each FT (SIP-010) transfer in a transaction.
- * Token metadata (symbol + decimals) must already be in cache.
- * Fee is included only in the first row where the wallet is the sender.
- */
 async function ftRows(
   item: HiroTransactionWithTransfers,
   walletAddress: string,
@@ -146,19 +115,16 @@ async function ftRows(
   let feeUsed = feeAlreadyClaimed;
 
   for (const ft of item.ft_transfers) {
-    const wallet    = walletAddress.toLowerCase();
+    const wallet      = walletAddress.toLowerCase();
     const isSender    = ft.sender.toLowerCase()    === wallet;
     const isRecipient = ft.recipient.toLowerCase() === wallet;
 
-    // Skip if this wallet is not involved in this specific transfer
     if (!isSender && !isRecipient) continue;
 
-    // Fetch token metadata (from cache — prefetched before this call)
-    const meta       = await getTokenMetadata(ft.asset_identifier);
-    const ftAmount   = rawToDecimal(ft.amount, meta.decimals);
+    const meta     = await getTokenMetadata(ft.asset_identifier);
+    const ftAmount = rawToDecimal(ft.amount, meta.decimals);
 
-    // Fee: only if sender, only for the first row of this tx
-    const feeAmount  = isSender && !feeUsed ? microStxToStx(tx.fee_rate) : "";
+    const feeAmount = isSender && !feeUsed ? microStxToStx(tx.fee_rate) : "";
     if (feeAmount) feeUsed = true;
 
     rows.push({
@@ -179,21 +145,10 @@ async function ftRows(
 
 // ─── Main transform function ────────────────────────────────────────────────
 
-/**
- * Transforms ALL fetched transactions into CsvRows.
- * Handles:
- *   - STX token_transfer (direct transfers)
- *   - FT transfers (SIP-010 tokens via contract calls)
- *   - Correct timestamps (Nakamoto-compatible)
- *   - Fee attribution (sender only, first row of tx)
- *
- * Sorted newest-first.
- */
 export async function transformTransactions(
   transactions: HiroTransactionWithTransfers[],
   walletAddress: string
 ): Promise<CsvRow[]> {
-  // Pre-fetch all unique FT token metadata in parallel
   const { prefetchTokenMetadata } = await import("@/lib/hiro-api");
   const allAssetIds = transactions
     .flatMap(item => item.ft_transfers ?? [])
@@ -204,63 +159,40 @@ export async function transformTransactions(
   const wallet = walletAddress.toLowerCase();
 
   for (const item of transactions) {
-    // Skip failed transactions
     if (item.tx.tx_status !== "success") continue;
 
     const date = resolveTransactionDate(item.tx);
-
-    // Determine if this wallet is the fee payer (sender of the tx)
     const isTxSender = item.tx.sender_address.toLowerCase() === wallet;
 
-    // 1. STX transfer rows
-    const stxR = stxRows(item, walletAddress, date, true /* include fee if applicable */);
-
-    // 2. FT transfer rows
-    //    Fee is only on the first row — if STX row already claimed it, skip for FT rows.
+    const stxR = stxRows(item, walletAddress, date, true);
     const stxClaimedFee = stxR.some(r => !!r.feeAmount);
     const ftR  = await ftRows(item, walletAddress, date, stxClaimedFee);
 
-    // If no STX transfer but wallet is sender of a contract_call with FT transfers,
-    // the fee still belongs to the wallet — attach it to the first FT row.
     if (
       stxR.length === 0 &&
       ftR.length > 0 &&
       isTxSender &&
       !ftR[0].feeAmount
     ) {
-      ftR[0].feeAmount  = microStxToStx(item.tx.fee_rate);
+      ftR[0].feeAmount   = microStxToStx(item.tx.fee_rate);
       ftR[0].feeCurrency = "STX";
     }
 
-    // Combine: STX rows first, then FT rows
     allRows.push(...stxR, ...ftR);
   }
 
-  // Sort newest-first (ISO strings sort lexicographically)
   allRows.sort((a, b) => (a.date > b.date ? -1 : 1));
-
   return allRows;
 }
 
 // ─── CSV serialization ──────────────────────────────────────────────────────
 
-/**
- * Serializes CsvRow[] into a valid CSV string.
- *
- * Column order matches Koinly / CoinTracking / Awaken import format.
- * An extra "Type" column is appended (informational, ignored by most tax tools).
- */
 export function rowsToCsv(rows: CsvRow[]): string {
   const HEADERS = [
-    "Date",
-    "Received Amount",
-    "Received Currency",
-    "Sent Amount",
-    "Sent Currency",
-    "Fee Amount",
-    "Fee Currency",
-    "TxHash",
-    "Type",
+    "Date", "Received Amount", "Received Currency",
+    "Sent Amount", "Sent Currency",
+    "Fee Amount", "Fee Currency",
+    "TxHash", "Type",
   ];
 
   const esc = (v: string) =>
