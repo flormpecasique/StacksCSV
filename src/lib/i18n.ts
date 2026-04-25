@@ -45,7 +45,12 @@ export interface Translations {
   sent:           string;
   fees:           string;
   transactions:   string;
-  otherTokens:    string;
+
+  // Other tokens (condensed line)
+  otherTokensFound:  string;   // singular: "other token in your transactions"
+  otherTokensFoundP: string;   // plural:   "other tokens in your transactions"
+  otherTokensInCsv:  string;   // confirming: "All movements included in your CSV"
+  moreTokens:        string;   // suffix:    "more"
 
   // Stacking rewards (PoX)
   stackingRewards:     string;
@@ -137,7 +142,11 @@ const en: Translations = {
   sent:           "Sent",
   fees:           "Fees",
   transactions:   "Transactions",
-  otherTokens:    "Other Tokens",
+
+  otherTokensFound:  "other token in your transactions",
+  otherTokensFoundP: "other tokens in your transactions",
+  otherTokensInCsv:  "All movements included in your CSV export",
+  moreTokens:        "more",
 
   stackingRewards:     "Stacking Rewards (PoX)",
   btcReceived:         "BTC Received",
@@ -222,7 +231,11 @@ const es: Translations = {
   sent:           "Enviado",
   fees:           "Comisiones",
   transactions:   "Transacciones",
-  otherTokens:    "Otros Tokens",
+
+  otherTokensFound:  "otro token en tus transacciones",
+  otherTokensFoundP: "otros tokens en tus transacciones",
+  otherTokensInCsv:  "Todos los movimientos están en tu CSV",
+  moreTokens:        "más",
 
   stackingRewards:     "Recompensas de Stacking (PoX)",
   btcReceived:         "BTC Recibido",
@@ -275,13 +288,6 @@ export const translations: Record<Lang, Translations> = { en, es };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-/**
- * Returns a translation function for the given language.
- *
- * Usage:
- *   const t = useTranslations(lang);
- *   t("heroH1")   // → string
- */
 export function useTranslations(lang: Lang) {
   return (key: keyof Translations): string => translations[lang][key];
 }
