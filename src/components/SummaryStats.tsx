@@ -8,7 +8,7 @@ interface SummaryStatsProps {
   lang:    Lang;
 }
 
-function formatStx(value: number): string {
+function formatNum(value: number): string {
   if (value === 0) return "0";
   return value.toFixed(6).replace(/\.?0+$/, "");
 }
@@ -16,10 +16,9 @@ function formatStx(value: number): string {
 export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
   const t = useTranslations(lang);
 
-  const stats = [
+  const stxStats = [
     {
-      label: t("received"), value: formatStx(summary.received),
-      prefix: "+", unit: "STX",
+      label: t("received"), value: formatNum(summary.received), prefix: "+", unit: "STX",
       bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.18)", color: "#4ade80",
       icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
         stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -27,8 +26,7 @@ export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
       </svg>,
     },
     {
-      label: t("sent"), value: formatStx(summary.sent),
-      prefix: "-", unit: "STX",
+      label: t("sent"), value: formatNum(summary.sent), prefix: "-", unit: "STX",
       bg: "rgba(249,115,22,0.07)", border: "rgba(249,115,22,0.18)", color: "#fb923c",
       icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
         stroke="#fb923c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -36,8 +34,7 @@ export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
       </svg>,
     },
     {
-      label: t("fees"), value: formatStx(summary.fees),
-      prefix: "-", unit: "STX",
+      label: t("fees"), value: formatNum(summary.fees), prefix: "-", unit: "STX",
       bg: "rgba(255,255,255,0.03)", border: "rgba(255,255,255,0.07)", color: "var(--text-muted)",
       icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
         stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -46,8 +43,7 @@ export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
       </svg>,
     },
     {
-      label: t("transactions"), value: summary.count.toLocaleString(),
-      prefix: "", unit: "",
+      label: t("transactions"), value: summary.count.toLocaleString(), prefix: "", unit: "",
       bg: "rgba(255,255,255,0.03)", border: "rgba(255,255,255,0.07)", color: "var(--text-primary)",
       icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
         stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -56,10 +52,16 @@ export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
     },
   ];
 
+  // Tokens with activity (received or sent > 0)
+  const activeTokens = Object.entries(summary.tokenSummary).filter(
+    ([, v]) => v.received > 0 || v.sent > 0
+  );
+
   return (
     <div className="rounded-xl p-4 animate-fade-in"
       style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}>
 
+      {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
           stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -74,12 +76,11 @@ export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
         </p>
       </div>
 
-      {/* 2 cols on mobile, 4 on sm+ */}
+      {/* STX summary grid — 2 cols on mobile, 4 on sm+ */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {stats.map((s) => (
+        {stxStats.map((s) => (
           <div key={s.label} className="flex flex-col gap-1.5 p-3 rounded-lg overflow-hidden"
             style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-            {/* Label + icon */}
             <div className="flex items-center justify-between gap-1">
               <span className="text-xs truncate"
                 style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
@@ -87,22 +88,21 @@ export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
               </span>
               <span style={{ flexShrink: 0 }}>{s.icon}</span>
             </div>
-            {/* Value */}
             <div className="flex items-baseline gap-0.5 min-w-0">
               {s.prefix && (
-                <span className="text-sm font-bold" style={{ color: s.color, fontFamily: "var(--font-mono)", flexShrink: 0 }}>
+                <span className="text-sm font-bold"
+                  style={{ color: s.color, fontFamily: "var(--font-mono)", flexShrink: 0 }}>
                   {s.prefix}
                 </span>
               )}
-              <span
-                className="text-sm sm:text-base font-bold leading-tight truncate"
+              <span className="text-sm sm:text-base font-bold leading-tight truncate"
                 style={{ color: s.color, fontFamily: "var(--font-mono)" }}
-                title={s.value}
-              >
+                title={s.value}>
                 {s.value}
               </span>
               {s.unit && (
-                <span className="text-xs ml-0.5" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)", flexShrink: 0 }}>
+                <span className="text-xs ml-0.5"
+                  style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)", flexShrink: 0 }}>
                   {s.unit}
                 </span>
               )}
@@ -110,6 +110,41 @@ export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
           </div>
         ))}
       </div>
+
+      {/* FT tokens section — shown only when there are FT transfers */}
+      {activeTokens.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2"
+            style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
+            {lang === "es" ? "Otros tokens" : "Other Tokens"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {activeTokens.map(([symbol, data]) => (
+              <div key={symbol}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+                style={{ background: "var(--bg-700)", border: "1px solid var(--border)" }}>
+                {/* Token badge */}
+                <span
+                  className="font-bold"
+                  style={{ color: "var(--brand)", fontFamily: "var(--font-mono)" }}
+                >
+                  {symbol}
+                </span>
+                {data.received > 0 && (
+                  <span style={{ color: "#4ade80", fontFamily: "var(--font-mono)" }}>
+                    +{formatNum(data.received)}
+                  </span>
+                )}
+                {data.sent > 0 && (
+                  <span style={{ color: "#fb923c", fontFamily: "var(--font-mono)" }}>
+                    -{formatNum(data.sent)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
