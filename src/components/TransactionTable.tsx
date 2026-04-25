@@ -11,13 +11,37 @@ interface TransactionTableProps {
 
 const PREVIEW_COUNT = 10;
 
+/**
+ * Format an ISO timestamp for display in the preview table.
+ *
+ * Shows: "Jan 15, 2024, 14:32:08 UTC"
+ *
+ * Why UTC + seconds:
+ *   - Stacks blockchain timestamps are in UTC (ISO 8601)
+ *   - Showing in user's local time creates inconsistency between users
+ *   - Tax tools expect UTC; matching that here avoids confusion
+ *   - Including seconds shows post-Nakamoto precision (~5s blocks)
+ *
+ * Pre-Nakamoto txs share the Bitcoin anchor block timestamp (~10min granularity),
+ * so multiple txs in the same Stacks block will show identical timestamps.
+ * That's the actual on-chain truth, not a display bug.
+ */
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric", month: "short", day: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-  } catch { return iso; }
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+
+    const month = d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+    const day   = d.getUTCDate();
+    const year  = d.getUTCFullYear();
+    const hh    = String(d.getUTCHours()).padStart(2, "0");
+    const mm    = String(d.getUTCMinutes()).padStart(2, "0");
+    const ss    = String(d.getUTCSeconds()).padStart(2, "0");
+
+    return `${month} ${day}, ${year}, ${hh}:${mm}:${ss} UTC`;
+  } catch {
+    return iso;
+  }
 }
 
 function truncateHash(hash: string): string {
@@ -50,7 +74,6 @@ export default function TransactionTable({ rows, walletAddress, lang }: Transact
 
   return (
     <section className="animate-slide-up" aria-label="Transaction preview">
-      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold tracking-wide uppercase"
           style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>
@@ -62,14 +85,9 @@ export default function TransactionTable({ rows, walletAddress, lang }: Transact
         </span>
       </div>
 
-      {/*
-        Outer div: overflow:hidden clips rounded corners correctly.
-        Inner .table-wrapper: handles the horizontal scroll.
-        minWidth on table: 480px fits on most phones in landscape.
-      */}
       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
         <div className="table-wrapper" style={{ background: "var(--bg-900)" }}>
-          <table className="w-full text-xs" style={{ minWidth: "480px" }}>
+          <table className="w-full text-xs" style={{ minWidth: "520px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {[t("colDate"), t("colDirection"), t("colAmount"), t("colFee"), t("colHash")].map((h) => (
@@ -90,7 +108,7 @@ export default function TransactionTable({ rows, walletAddress, lang }: Transact
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <td className="px-3 sm:px-4 py-3 whitespace-nowrap"
-                    style={{ color: "var(--text-secondary)" }}>
+                    style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
                     {formatDate(row.date)}
                   </td>
                   <td className="px-3 sm:px-4 py-3">
