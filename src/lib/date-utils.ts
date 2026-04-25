@@ -1,17 +1,45 @@
 import type { CsvRow } from "@/types";
 
+// ─── DateRange type ───────────────────────────────────────────────────────────
+
+export interface DateRange {
+  from: string;   // YYYY-MM-DD or ""
+  to:   string;   // YYYY-MM-DD or ""
+}
+
+// ─── Preset ranges ────────────────────────────────────────────────────────────
+
+export function getThisYearRange(): DateRange {
+  const y = new Date().getFullYear();
+  return { from: `${y}-01-01`, to: `${y}-12-31` };
+}
+
+export function getLastYearRange(): DateRange {
+  const y = new Date().getFullYear() - 1;
+  return { from: `${y}-01-01`, to: `${y}-12-31` };
+}
+
+export function getLast30DaysRange(): DateRange {
+  const now  = new Date();
+  const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  return { from, to: now.toISOString().slice(0, 10) };
+}
+
+export function getDefaultRange(): DateRange {
+  return getThisYearRange();
+}
+
 // ─── Date range filtering ─────────────────────────────────────────────────────
 
-export function filterRowsByDateRange(
-  rows: CsvRow[],
-  from: string,
-  to: string
-): CsvRow[] {
+export function filterRowsByDateRange(rows: CsvRow[], range: DateRange): CsvRow[] {
+  const { from, to } = range;
   if (!from && !to) return rows;
   return rows.filter((r) => {
     const d = r.date.slice(0, 10);
     if (from && d < from) return false;
-    if (to && d > to) return false;
+    if (to   && d > to)   return false;
     return true;
   });
 }
@@ -25,12 +53,12 @@ export interface TokenSummaryEntry {
 }
 
 export interface Summary {
-  totalReceived: number;  // STX received
-  totalSent:     number;  // STX sent (absolute)
-  totalFees:     number;  // STX fees
+  totalReceived: number;
+  totalSent:     number;
+  totalFees:     number;
   txCount:       number;
-  tokenSummary:  TokenSummaryEntry[]; // non-STX tokens + BTC stacking rewards
-  btcRewards:    number;              // total BTC from PoX (convenience field)
+  tokenSummary:  TokenSummaryEntry[];
+  btcRewards:    number;
 }
 
 export function computeSummary(rows: CsvRow[]): Summary {
@@ -38,7 +66,6 @@ export function computeSummary(rows: CsvRow[]): Summary {
   let totalSent     = 0;
   let totalFees     = 0;
 
-  // Map: currency → { received, sent }
   const tokenMap = new Map<string, { received: number; sent: number }>();
 
   function addToken(currency: string, received: number, sent: number) {
@@ -56,17 +83,14 @@ export function computeSummary(rows: CsvRow[]): Summary {
     const recvCur = row.receivedCurrency?.toUpperCase() ?? "";
     const sentCur = row.sentCurrency?.toUpperCase()     ?? "";
 
-    // STX accounting
     if (recvCur === "STX") totalReceived += recv;
     if (sentCur === "STX") totalSent     += sent;
-    if (fee > 0)           totalFees     += fee;  // fees are always STX
+    if (fee > 0)           totalFees     += fee;
 
-    // Non-STX tokens (FT tokens + BTC stacking rewards)
     if (recvCur && recvCur !== "STX") addToken(recvCur, recv, 0);
     if (sentCur && sentCur !== "STX") addToken(sentCur, 0, sent);
   }
 
-  // Build sorted array: BTC first, then alphabetical
   const tokenSummary: TokenSummaryEntry[] = [...tokenMap.entries()]
     .filter(([, v]) => v.received > 0 || v.sent > 0)
     .map(([currency, v]) => ({ currency, ...v }))
@@ -76,60 +100,24 @@ export function computeSummary(rows: CsvRow[]): Summary {
       return a.currency.localeCompare(b.currency);
     });
 
-  const btcEntry  = tokenMap.get("BTC");
+  const btcEntry   = tokenMap.get("BTC");
   const btcRewards = btcEntry?.received ?? 0;
 
-  return {
-    totalReceived,
-    totalSent,
-    totalFees,
-    txCount: rows.length,
-    tokenSummary,
-    btcRewards,
-  };
+  return { totalReceived, totalSent, totalFees, txCount: rows.length, tokenSummary, btcRewards };
 }
 
 // ─── CSV filename builder ─────────────────────────────────────────────────────
 
-export function buildCsvFilename(address: string, from: string, to: string): string {
-  const short = address.slice(0, 10);
+export function buildCsvFilename(address: string, range: DateRange): string {
+  const short       = address.slice(0, 10);
   const currentYear = new Date().getFullYear().toString();
+  const prevYear    = (new Date().getFullYear() - 1).toString();
+  const { from, to } = range;
 
-  const isFullYear =
-    from === `${currentYear}-01-01` && to === `${currentYear}-12-31`;
+  if (from === `${currentYear}-01-01` && to === `${currentYear}-12-31`)
+    return `stx-${short}-${currentYear}.csv`;
+  if (from === `${prevYear}-01-01` && to === `${prevYear}-12-31`)
+    return `stx-${short}-${prevYear}.csv`;
 
-  const isLastYear =
-    from === `${parseInt(currentYear) - 1}-01-01` &&
-    to   === `${parseInt(currentYear) - 1}-12-31`;
-
-  if (isFullYear)  return `stx-${short}-${currentYear}.csv`;
-  if (isLastYear)  return `stx-${short}-${parseInt(currentYear) - 1}.csv`;
-
-  const fromLabel = from || "start";
-  const toLabel   = to   || "end";
-  return `stx-${short}-${fromLabel}_to_${toLabel}.csv`;
-}
-
-// ─── Date presets ─────────────────────────────────────────────────────────────
-
-export function getDatePresets() {
-  const now  = new Date();
-  const year = now.getFullYear();
-
-  return {
-    thisYear: {
-      from: `${year}-01-01`,
-      to:   `${year}-12-31`,
-    },
-    lastYear: {
-      from: `${year - 1}-01-01`,
-      to:   `${year - 1}-12-31`,
-    },
-    last30: {
-      from: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(0, 10),
-      to: now.toISOString().slice(0, 10),
-    },
-  };
+  return `stx-${short}-${from || "start"}_to_${to || "end"}.csv`;
 }
