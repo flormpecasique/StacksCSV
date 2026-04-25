@@ -1,64 +1,61 @@
-/**
- * /api/transactions/route.ts
- * GET /api/transactions?address={stacksAddressOrBnsName}&types=stx,ft
- *
- * Query params:
- *   address  — SP… address or BNS name (required)
- *   types    — comma-separated: "stx", "ft", or "stx,ft" (default: "stx,ft")
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { fetchAllTransactions, resolveBnsName } from "@/lib/hiro-api";
 import { transformTransactions } from "@/lib/transform";
-import type { ApiSuccessResponse, ApiErrorResponse } from "@/types";
+import { fetchStackingRewardRows } from "@/lib/stacking-api";
 
-const STACKS_ADDRESS_REGEX = /^S[MP][A-Z0-9]{28,48}$/;
-const BNS_NAME_REGEX       = /^[a-zA-Z0-9_-]+\.[a-zA-Z]+$/;
+// Simple in-memory cache (address → {rows, timestamp})
+const cache = new Map<string, { rows: unknown[]; ts: number }>();
+const TTL_MS = 2 * 60 * 1000; // 2 minutes
 
-export async function GET(
-  request: NextRequest
-): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
-  const { searchParams } = request.nextUrl;
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
   const raw = searchParams.get("address")?.trim() ?? "";
 
   if (!raw) {
-    return NextResponse.json({ error: "Missing 'address' query parameter." }, { status: 400 });
+    return NextResponse.json({ error: "Missing address" }, { status: 400 });
   }
 
+  // Resolve BNS name → STX address if needed
   let address = raw;
-  let resolvedFrom: string | undefined;
-
-  // BNS resolution
-  if (BNS_NAME_REGEX.test(raw) && !STACKS_ADDRESS_REGEX.test(raw)) {
-    try {
-      address      = await resolveBnsName(raw);
-      resolvedFrom = raw.toLowerCase();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Could not resolve BNS name.";
-      return NextResponse.json({ error: message }, { status: 404 });
+  if (!raw.startsWith("SP") && !raw.startsWith("SM")) {
+    const resolved = await resolveBnsName(raw);
+    if (!resolved) {
+      return NextResponse.json(
+        { error: `Could not resolve BNS name: ${raw}` },
+        { status: 404 }
+      );
     }
+    address = resolved;
   }
 
-  if (!STACKS_ADDRESS_REGEX.test(address)) {
-    return NextResponse.json(
-      { error: "Invalid input. Enter a Stacks address (SP...) or a BNS name (e.g. flor.btc)." },
-      { status: 400 }
-    );
+  // Cache check
+  const cached = cache.get(address);
+  if (cached && Date.now() - cached.ts < TTL_MS) {
+    return NextResponse.json({ address, rows: cached.rows });
   }
 
   try {
-    const { transactions, total } = await fetchAllTransactions(address);
+    // Fetch STX + FT transactions and stacking rewards in parallel
+    const [rawTxs, stackingRows] = await Promise.all([
+      fetchAllTransactions(address),
+      fetchStackingRewardRows(address),
+    ]);
 
-    // transformTransactions is now async (needs to prefetch token metadata)
-    const rows = await transformTransactions(transactions, address);
+    const stxFtRows = await transformTransactions(rawTxs, address);
 
-    return NextResponse.json(
-      { rows, total, fetched: rows.length, address, resolvedFrom },
-      { status: 200 }
+    // Merge and sort all rows newest-first
+    const allRows = [...stxFtRows, ...stackingRows].sort((a, b) =>
+      a.date > b.date ? -1 : 1
     );
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error occurred.";
-    const status  = message.includes("not found") ? 404 : 502;
-    return NextResponse.json({ error: message }, { status });
+
+    cache.set(address, { rows: allRows, ts: Date.now() });
+
+    return NextResponse.json({ address, rows: allRows });
+  } catch (err) {
+    console.error("API error:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch transactions" },
+      { status: 500 }
+    );
   }
 }
