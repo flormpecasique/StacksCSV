@@ -1,150 +1,273 @@
 "use client";
 
-import type { TransactionSummary } from "@/lib/date-utils";
-import { type Lang, useTranslations } from "@/lib/i18n";
+import type { Summary } from "@/lib/date-utils";
+import type { Translations } from "@/lib/i18n";
 
-interface SummaryStatsProps {
-  summary: TransactionSummary;
-  lang:    Lang;
+interface Props {
+  summary:  Summary;
+  t:        Translations;
 }
 
-function formatNum(value: number): string {
-  if (value === 0) return "0";
-  return value.toFixed(6).replace(/\.?0+$/, "");
+// Format a number with up to 6 significant decimals, strip trailing zeros
+function fmt(n: number, decimals = 6): string {
+  if (n === 0) return "0";
+  return n
+    .toFixed(decimals)
+    .replace(/\.?0+$/, "")
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-export default function SummaryStats({ summary, lang }: SummaryStatsProps) {
-  const t = useTranslations(lang);
+export default function SummaryStats({ summary, t }: Props) {
+  const { totalReceived, totalSent, totalFees, txCount, tokenSummary, btcRewards } = summary;
 
-  const stxStats = [
-    {
-      label: t("received"), value: formatNum(summary.received), prefix: "+", unit: "STX",
-      bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.18)", color: "#4ade80",
-      icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
-      </svg>,
-    },
-    {
-      label: t("sent"), value: formatNum(summary.sent), prefix: "-", unit: "STX",
-      bg: "rgba(249,115,22,0.07)", border: "rgba(249,115,22,0.18)", color: "#fb923c",
-      icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="#fb923c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="17 13 12 18 7 13"/><line x1="12" y1="18" x2="12" y2="6"/>
-      </svg>,
-    },
-    {
-      label: t("fees"), value: formatNum(summary.fees), prefix: "-", unit: "STX",
-      bg: "rgba(255,255,255,0.03)", border: "rgba(255,255,255,0.07)", color: "var(--text-muted)",
-      icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="1" x2="12" y2="23"/>
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-      </svg>,
-    },
-    {
-      label: t("transactions"), value: summary.count.toLocaleString(), prefix: "", unit: "",
-      bg: "rgba(255,255,255,0.03)", border: "rgba(255,255,255,0.07)", color: "var(--text-primary)",
-      icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-      </svg>,
-    },
-  ];
-
-  // Tokens with activity (received or sent > 0)
-  const activeTokens = Object.entries(summary.tokenSummary).filter(
-    ([, v]) => v.received > 0 || v.sent > 0
-  );
+  // Separate BTC (stacking rewards) from other FT tokens
+  const btcEntry    = tokenSummary.find(e => e.currency === "BTC");
+  const otherTokens = tokenSummary.filter(e => e.currency !== "BTC");
 
   return (
-    <div className="rounded-xl p-4 animate-fade-in"
-      style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-          stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="7" height="7" rx="1"/>
-          <rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/>
-          <rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        <p className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
-          {t("summaryTitle")}
-        </p>
+      {/* ── STX Summary ──────────────────────────────────────── */}
+      <div
+        style={{
+          background:   "rgba(255,255,255,0.04)",
+          border:       "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "12px",
+          padding:      "16px",
+        }}
+      >
+        <div
+          style={{
+            fontSize:     "11px",
+            fontWeight:   600,
+            letterSpacing:"0.08em",
+            color:        "rgba(255,255,255,0.4)",
+            textTransform:"uppercase",
+            marginBottom: "12px",
+          }}
+        >
+          STX
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <StatCard
+            label={t.received}
+            value={`+${fmt(totalReceived)}`}
+            color="#4ade80"
+          />
+          <StatCard
+            label={t.sent}
+            value={`-${fmt(totalSent)}`}
+            color="#f87171"
+          />
+          <StatCard
+            label={t.fees}
+            value={`-${fmt(totalFees)}`}
+            color="#fb923c"
+          />
+          <StatCard
+            label={t.transactions}
+            value={txCount.toString()}
+            color="rgba(255,255,255,0.7)"
+          />
+        </div>
       </div>
 
-      {/* STX summary grid — 2 cols on mobile, 4 on sm+ */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {stxStats.map((s) => (
-          <div key={s.label} className="flex flex-col gap-1.5 p-3 rounded-lg overflow-hidden"
-            style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs truncate"
-                style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
-                {s.label}
-              </span>
-              <span style={{ flexShrink: 0 }}>{s.icon}</span>
-            </div>
-            <div className="flex items-baseline gap-0.5 min-w-0">
-              {s.prefix && (
-                <span className="text-sm font-bold"
-                  style={{ color: s.color, fontFamily: "var(--font-mono)", flexShrink: 0 }}>
-                  {s.prefix}
-                </span>
-              )}
-              <span className="text-sm sm:text-base font-bold leading-tight truncate"
-                style={{ color: s.color, fontFamily: "var(--font-mono)" }}
-                title={s.value}>
-                {s.value}
-              </span>
-              {s.unit && (
-                <span className="text-xs ml-0.5"
-                  style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)", flexShrink: 0 }}>
-                  {s.unit}
-                </span>
-              )}
-            </div>
+      {/* ── Stacking Rewards (BTC) ────────────────────────────── */}
+      {btcEntry && btcEntry.received > 0 && (
+        <div
+          style={{
+            background:   "rgba(247,147,26,0.08)",
+            border:       "1px solid rgba(247,147,26,0.25)",
+            borderRadius: "12px",
+            padding:      "16px",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              display:      "flex",
+              alignItems:   "center",
+              gap:          "8px",
+              marginBottom: "12px",
+            }}
+          >
+            <span style={{ fontSize: "18px" }}>₿</span>
+            <span
+              style={{
+                fontSize:     "11px",
+                fontWeight:   600,
+                letterSpacing:"0.08em",
+                color:        "rgba(247,147,26,0.9)",
+                textTransform:"uppercase",
+              }}
+            >
+              {t.stackingRewards}
+            </span>
           </div>
-        ))}
-      </div>
 
-      {/* FT tokens section — shown only when there are FT transfers */}
-      {activeTokens.length > 0 && (
-        <div className="mt-3">
-          <p className="text-xs font-semibold uppercase tracking-widest mb-2"
-            style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
-            {lang === "es" ? "Otros tokens" : "Other Tokens"}
+          {/* BTC received */}
+          <div
+            style={{
+              background:   "rgba(247,147,26,0.12)",
+              borderRadius: "8px",
+              padding:      "12px 14px",
+              display:      "flex",
+              justifyContent:"space-between",
+              alignItems:   "center",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "13px",
+                color:    "rgba(255,255,255,0.6)",
+              }}
+            >
+              {t.btcReceived}
+            </span>
+            <span
+              style={{
+                fontSize:   "16px",
+                fontWeight: 700,
+                color:      "#f7931a",
+                fontFamily: "monospace",
+              }}
+            >
+              +{fmt(btcRewards, 8)} BTC
+            </span>
+          </div>
+
+          {/* Info note */}
+          <p
+            style={{
+              fontSize:   "11px",
+              color:      "rgba(255,255,255,0.35)",
+              marginTop:  "8px",
+              marginBottom: 0,
+            }}
+          >
+            {t.stackingRewardsNote}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {activeTokens.map(([symbol, data]) => (
-              <div key={symbol}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
-                style={{ background: "var(--bg-700)", border: "1px solid var(--border)" }}>
-                {/* Token badge */}
+        </div>
+      )}
+
+      {/* ── Other FT Tokens ──────────────────────────────────── */}
+      {otherTokens.length > 0 && (
+        <div
+          style={{
+            background:   "rgba(255,255,255,0.04)",
+            border:       "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "12px",
+            padding:      "16px",
+          }}
+        >
+          <div
+            style={{
+              fontSize:     "11px",
+              fontWeight:   600,
+              letterSpacing:"0.08em",
+              color:        "rgba(255,255,255,0.4)",
+              textTransform:"uppercase",
+              marginBottom: "12px",
+            }}
+          >
+            {t.otherTokens}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {otherTokens.map((token) => (
+              <div
+                key={token.currency}
+                style={{
+                  display:        "flex",
+                  justifyContent: "space-between",
+                  alignItems:     "center",
+                  padding:        "8px 12px",
+                  background:     "rgba(255,255,255,0.04)",
+                  borderRadius:   "8px",
+                }}
+              >
                 <span
-                  className="font-bold"
-                  style={{ color: "var(--brand)", fontFamily: "var(--font-mono)" }}
+                  style={{
+                    fontSize:   "13px",
+                    fontWeight: 600,
+                    color:      "rgba(255,255,255,0.8)",
+                  }}
                 >
-                  {symbol}
+                  {token.currency}
                 </span>
-                {data.received > 0 && (
-                  <span style={{ color: "#4ade80", fontFamily: "var(--font-mono)" }}>
-                    +{formatNum(data.received)}
-                  </span>
-                )}
-                {data.sent > 0 && (
-                  <span style={{ color: "#fb923c", fontFamily: "var(--font-mono)" }}>
-                    -{formatNum(data.sent)}
-                  </span>
-                )}
+                <div style={{ textAlign: "right" }}>
+                  {token.received > 0 && (
+                    <div
+                      style={{
+                        fontSize:   "13px",
+                        color:      "#4ade80",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      +{fmt(token.received)}
+                    </div>
+                  )}
+                  {token.sent > 0 && (
+                    <div
+                      style={{
+                        fontSize:   "13px",
+                        color:      "#f87171",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      -{fmt(token.sent)}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Helper: single stat card ─────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        background:   "rgba(255,255,255,0.04)",
+        borderRadius: "8px",
+        padding:      "10px 12px",
+      }}
+    >
+      <div
+        style={{
+          fontSize:     "11px",
+          color:        "rgba(255,255,255,0.4)",
+          marginBottom: "4px",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize:   "15px",
+          fontWeight: 700,
+          color,
+          fontFamily: "monospace",
+          wordBreak:  "break-all",
+        }}
+      >
+        {value}
+      </div>
     </div>
   );
 }
