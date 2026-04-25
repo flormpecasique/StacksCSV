@@ -128,12 +128,12 @@ This tool acts as:
 
 # 🔮 Roadmap
 
-- Support for SIP-010 tokens (ALEX, WELSH, etc.)
-- Stacking rewards export (PoX)
+- Support for SIP-010 tokens (ALEX, WELSH, etc.) ✅
+- Stacking rewards export (PoX) ✅
 - Smart contract transaction parsing
 - Multi-wallet aggregation
-- .btc name resolution
-- Persistent edge caching (Vercel KV)
+- .btc name resolution ✅
+- Persistent edge caching (Vercel KV) ✅
 
 ---
 
