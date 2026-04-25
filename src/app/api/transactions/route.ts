@@ -3,9 +3,8 @@ import { fetchAllTransactions, resolveBnsName } from "@/lib/hiro-api";
 import { transformTransactions } from "@/lib/transform";
 import { fetchStackingRewardRows } from "@/lib/stacking-api";
 
-// Simple in-memory cache (address → {rows, timestamp})
-const cache = new Map<string, { rows: unknown[]; ts: number }>();
-const TTL_MS = 2 * 60 * 1000; // 2 minutes
+const cache  = new Map<string, { rows: unknown[]; total: number; ts: number }>();
+const TTL_MS = 2 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -15,46 +14,55 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing address" }, { status: 400 });
   }
 
-  // Resolve BNS name → STX address if needed
-  let address = raw;
+  // Resolve BNS name if needed
+  let address      = raw;
+  let resolvedFrom: string | undefined;
+
   if (!raw.startsWith("SP") && !raw.startsWith("SM")) {
-    const resolved = await resolveBnsName(raw);
-    if (!resolved) {
+    try {
+      address      = await resolveBnsName(raw);
+      resolvedFrom = raw;
+    } catch (err) {
       return NextResponse.json(
-        { error: `Could not resolve BNS name: ${raw}` },
+        { error: err instanceof Error ? err.message : `Could not resolve BNS name: ${raw}` },
         { status: 404 }
       );
     }
-    address = resolved;
   }
 
-  // Cache check
+  // Cache hit
   const cached = cache.get(address);
   if (cached && Date.now() - cached.ts < TTL_MS) {
-    return NextResponse.json({ address, rows: cached.rows });
+    return NextResponse.json({ address, resolvedFrom, rows: cached.rows, total: cached.total });
   }
 
   try {
-    // Fetch STX + FT transactions and stacking rewards in parallel
-    const [rawTxs, stackingRows] = await Promise.all([
+    // Fetch STX/FT transactions and stacking rewards in parallel
+    const [txResult, stackingRows] = await Promise.all([
       fetchAllTransactions(address),
       fetchStackingRewardRows(address),
     ]);
 
-    const stxFtRows = await transformTransactions(rawTxs, address);
+    // fetchAllTransactions returns { transactions, total }
+    const stxFtRows = await transformTransactions(txResult.transactions, address);
 
-    // Merge and sort all rows newest-first
+    // Merge and sort newest-first
     const allRows = [...stxFtRows, ...stackingRows].sort((a, b) =>
       a.date > b.date ? -1 : 1
     );
 
-    cache.set(address, { rows: allRows, ts: Date.now() });
+    cache.set(address, { rows: allRows, total: txResult.total, ts: Date.now() });
 
-    return NextResponse.json({ address, rows: allRows });
+    return NextResponse.json({
+      address,
+      resolvedFrom,
+      rows:  allRows,
+      total: txResult.total,
+    });
   } catch (err) {
     console.error("API error:", err);
     return NextResponse.json(
-      { error: "Failed to fetch transactions" },
+      { error: err instanceof Error ? err.message : "Failed to fetch transactions" },
       { status: 500 }
     );
   }
