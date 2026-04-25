@@ -1,132 +1,135 @@
-/**
- * date-utils.ts
- * Pure utility functions for date filtering, range presets, and summary computation.
- */
-
 import type { CsvRow } from "@/types";
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// ─── Date range filtering ─────────────────────────────────────────────────────
 
-export interface DateRange {
-  from: string; // "YYYY-MM-DD"
-  to:   string; // "YYYY-MM-DD"
-}
-
-export interface TransactionSummary {
-  received:     number;   // total STX received
-  sent:         number;   // total STX sent
-  fees:         number;   // total STX fees paid
-  count:        number;   // total row count
-  tokenSummary: Record<string, { received: number; sent: number }>; // per-token
-}
-
-// ─── Formatting ─────────────────────────────────────────────────────────────
-
-export function formatDateForInput(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function parseInputDate(dateStr: string): Date {
-  return new Date(dateStr + "T00:00:00.000Z");
-}
-
-// ─── Presets ─────────────────────────────────────────────────────────────────
-
-export function getThisYearRange(): DateRange {
-  const year = new Date().getUTCFullYear();
-  return { from: `${year}-01-01`, to: `${year}-12-31` };
-}
-
-export function getLastYearRange(): DateRange {
-  const year = new Date().getUTCFullYear() - 1;
-  return { from: `${year}-01-01`, to: `${year}-12-31` };
-}
-
-export function getLast30DaysRange(): DateRange {
-  const today = new Date();
-  const from  = new Date(today);
-  from.setUTCDate(today.getUTCDate() - 30);
-  return { from: formatDateForInput(from), to: formatDateForInput(today) };
-}
-
-export function getDefaultRange(): DateRange {
-  return getThisYearRange();
-}
-
-// ─── Filtering ───────────────────────────────────────────────────────────────
-
-export function filterRowsByDateRange(rows: CsvRow[], range: DateRange): CsvRow[] {
-  if (!range.from && !range.to) return rows;
-
-  const fromMs = range.from ? parseInputDate(range.from).getTime() : -Infinity;
-  const toMs   = range.to
-    ? parseInputDate(range.to).getTime() + 24 * 60 * 60 * 1000
-    : Infinity;
-
-  return rows.filter(row => {
-    const txMs = new Date(row.date).getTime();
-    return txMs >= fromMs && txMs < toMs;
+export function filterRowsByDateRange(
+  rows: CsvRow[],
+  from: string,
+  to: string
+): CsvRow[] {
+  if (!from && !to) return rows;
+  return rows.filter((r) => {
+    const d = r.date.slice(0, 10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    return true;
   });
 }
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
+// ─── Summary computation ──────────────────────────────────────────────────────
 
-/**
- * Computes aggregate stats.
- * STX figures are in the top-level received/sent/fees.
- * Other tokens accumulate in tokenSummary keyed by symbol.
- */
-export function computeSummary(rows: CsvRow[]): TransactionSummary {
-  let received = 0;
-  let sent     = 0;
-  let fees     = 0;
-  const tokenSummary: Record<string, { received: number; sent: number }> = {};
+export interface TokenSummaryEntry {
+  currency: string;
+  received: number;
+  sent:     number;
+}
 
-  for (const row of rows) {
-    const isStx = row.receivedCurrency === "STX" || row.sentCurrency === "STX";
+export interface Summary {
+  totalReceived: number;  // STX received
+  totalSent:     number;  // STX sent (absolute)
+  totalFees:     number;  // STX fees
+  txCount:       number;
+  tokenSummary:  TokenSummaryEntry[]; // non-STX tokens + BTC stacking rewards
+  btcRewards:    number;              // total BTC from PoX (convenience field)
+}
 
-    // STX
-    if (isStx) {
-      const r = parseFloat(row.receivedAmount); if (!isNaN(r)) received += r;
-      const s = parseFloat(row.sentAmount);     if (!isNaN(s)) sent     += s;
-    } else {
-      // FT token
-      const ticker = row.receivedCurrency || row.sentCurrency;
-      if (ticker) {
-        if (!tokenSummary[ticker]) tokenSummary[ticker] = { received: 0, sent: 0 };
-        const r = parseFloat(row.receivedAmount); if (!isNaN(r)) tokenSummary[ticker].received += r;
-        const s = parseFloat(row.sentAmount);     if (!isNaN(s)) tokenSummary[ticker].sent     += s;
-      }
-    }
+export function computeSummary(rows: CsvRow[]): Summary {
+  let totalReceived = 0;
+  let totalSent     = 0;
+  let totalFees     = 0;
 
-    // Fees are always STX
-    const f = parseFloat(row.feeAmount); if (!isNaN(f)) fees += f;
+  // Map: currency → { received, sent }
+  const tokenMap = new Map<string, { received: number; sent: number }>();
+
+  function addToken(currency: string, received: number, sent: number) {
+    const prev = tokenMap.get(currency) ?? { received: 0, sent: 0 };
+    tokenMap.set(currency, {
+      received: prev.received + received,
+      sent:     prev.sent     + sent,
+    });
   }
 
+  for (const row of rows) {
+    const recv    = parseFloat(row.receivedAmount)   || 0;
+    const sent    = parseFloat(row.sentAmount)       || 0;
+    const fee     = parseFloat(row.feeAmount)        || 0;
+    const recvCur = row.receivedCurrency?.toUpperCase() ?? "";
+    const sentCur = row.sentCurrency?.toUpperCase()     ?? "";
+
+    // STX accounting
+    if (recvCur === "STX") totalReceived += recv;
+    if (sentCur === "STX") totalSent     += sent;
+    if (fee > 0)           totalFees     += fee;  // fees are always STX
+
+    // Non-STX tokens (FT tokens + BTC stacking rewards)
+    if (recvCur && recvCur !== "STX") addToken(recvCur, recv, 0);
+    if (sentCur && sentCur !== "STX") addToken(sentCur, 0, sent);
+  }
+
+  // Build sorted array: BTC first, then alphabetical
+  const tokenSummary: TokenSummaryEntry[] = [...tokenMap.entries()]
+    .filter(([, v]) => v.received > 0 || v.sent > 0)
+    .map(([currency, v]) => ({ currency, ...v }))
+    .sort((a, b) => {
+      if (a.currency === "BTC") return -1;
+      if (b.currency === "BTC") return  1;
+      return a.currency.localeCompare(b.currency);
+    });
+
+  const btcEntry  = tokenMap.get("BTC");
+  const btcRewards = btcEntry?.received ?? 0;
+
   return {
-    received: Math.round(received * 1_000_000) / 1_000_000,
-    sent:     Math.round(sent     * 1_000_000) / 1_000_000,
-    fees:     Math.round(fees     * 1_000_000) / 1_000_000,
-    count:    rows.length,
+    totalReceived,
+    totalSent,
+    totalFees,
+    txCount: rows.length,
     tokenSummary,
+    btcRewards,
   };
 }
 
-// ─── Filename ─────────────────────────────────────────────────────────────────
+// ─── CSV filename builder ─────────────────────────────────────────────────────
 
-export function buildCsvFilename(address: string, range: DateRange): string {
-  const addr = address.slice(0, 10);
-  const year = new Date().getUTCFullYear();
-  if (
-    range.from === `${year}-01-01` &&
-    range.to   === `${year}-12-31`
-  ) {
-    return `stx-${addr}-${year}.csv`;
-  }
-  const from = range.from || "start";
-  const to   = range.to   || "end";
-  return `stx-${addr}-${from}_to_${to}.csv`;
+export function buildCsvFilename(address: string, from: string, to: string): string {
+  const short = address.slice(0, 10);
+  const currentYear = new Date().getFullYear().toString();
+
+  const isFullYear =
+    from === `${currentYear}-01-01` && to === `${currentYear}-12-31`;
+
+  const isLastYear =
+    from === `${parseInt(currentYear) - 1}-01-01` &&
+    to   === `${parseInt(currentYear) - 1}-12-31`;
+
+  if (isFullYear)  return `stx-${short}-${currentYear}.csv`;
+  if (isLastYear)  return `stx-${short}-${parseInt(currentYear) - 1}.csv`;
+
+  const fromLabel = from || "start";
+  const toLabel   = to   || "end";
+  return `stx-${short}-${fromLabel}_to_${toLabel}.csv`;
+}
+
+// ─── Date presets ─────────────────────────────────────────────────────────────
+
+export function getDatePresets() {
+  const now  = new Date();
+  const year = now.getFullYear();
+
+  return {
+    thisYear: {
+      from: `${year}-01-01`,
+      to:   `${year}-12-31`,
+    },
+    lastYear: {
+      from: `${year - 1}-01-01`,
+      to:   `${year - 1}-12-31`,
+    },
+    last30: {
+      from: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10),
+      to: now.toISOString().slice(0, 10),
+    },
+  };
 }

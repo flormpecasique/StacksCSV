@@ -1,172 +1,165 @@
-/**
- * i18n.ts — EN / ES translations
- */
-
 export type Lang = "en" | "es";
 
-export const translations = {
-  en: {
-    // ── Hero ──────────────────────────────────────────────────────────────
-    heroH1:           "Export your Stacks transactions for taxes in seconds",
-    heroSub:          "Download a clean, tax-ready CSV from your STX wallet. No login required.",
-    trustBadge:       "Free · No login · Open tool",
+export interface Translations {
+  // Headings & labels
+  title:               string;
+  subtitle:            string;
+  placeholder:         string;
+  fetchButton:         string;
+  fetching:            string;
 
-    // ── Input ─────────────────────────────────────────────────────────────
-    addressLabel:     "Your Stacks address or BNS name",
-    addressHint:      "Accepts SP… addresses and BNS names like",
-    addressExample:   "Example: SP3FBR2AGK5H229ANADEN...",
-    noDataStored:     "We don't store your data",
-    exportBtn:        "Export →",
-    fetching:         "Fetching…",
+  // Date filter
+  dateRange:           string;
+  from:                string;
+  to:                  string;
+  thisYear:            string;
+  lastYear:            string;
+  last30Days:          string;
 
-    // ── Filter ────────────────────────────────────────────────────────────
-    filterTitle:      "Filter by date",
-    from:             "From",
-    to:               "To",
-    thisYear:         "This Year",
-    lastYear:         "Last Year",
-    last30Days:       "Last 30 Days",
+  // Summary stats
+  received:            string;
+  sent:                string;
+  fees:                string;
+  transactions:        string;
+  otherTokens:         string;
 
-    // ── Results header ────────────────────────────────────────────────────
-    txFound:          "transactions found",
-    txFoundSingle:    "transaction found",
-    totalOnChain:     "Total on-chain txs",
-    stxTransfersStat: "STX Transfers",
+  // ── Stacking rewards (NEW) ──────────────────────────────
+  stackingRewards:     string;   // section header
+  btcReceived:         string;   // label for BTC amount
+  stackingRewardsNote: string;   // small explanatory note
+  // ────────────────────────────────────────────────────────
 
-    // ── Tax Summary ───────────────────────────────────────────────────────
-    summaryTitle:     "Tax Summary",
-    received:         "Received",
-    sent:             "Sent",
-    fees:             "Fees",
-    transactions:     "Transactions",
+  // Table
+  tablePreview:        string;
+  date:                string;
+  type:                string;
+  amount:              string;
+  currency:            string;
+  fee:                 string;
+  txHash:              string;
+  noTransactions:      string;
+  showingRows:         string;
 
-    // ── Export ────────────────────────────────────────────────────────────
-    downloadBtn:      "Download tax-ready CSV",
-    copyBtn:          "Copy CSV",
-    copiedBtn:        "Copied!",
-    compatNote:       "Compatible with Koinly, CoinTracking and other tax tools",
+  // Export
+  downloadCsv:         string;
+  copyCsv:             string;
+  copied:              string;
 
-    // ── Empty states ──────────────────────────────────────────────────────
-    noTxFound:        "No STX transfers found for this address.",
-    noTxDesc:         "This address has no simple STX transfer transactions.",
-    noTxInRange:      "No transactions found for this date range.",
-    noTxInRangeHint:  "Try selecting a different period.",
+  // Trust / footer
+  noDataStored:        string;
+  openSource:          string;
 
-    // ── How it works ──────────────────────────────────────────────────────
-    howItWorks:       "How it works",
-    step1Title:       "Enter your address",
-    step1Desc:        "Paste your SP… address or BNS name (e.g. flor.btc).",
-    step2Title:       "We fetch everything",
-    step2Desc:        "All STX transfers pulled from the Stacks blockchain. Nothing stored.",
-    step3Title:       "Download your CSV",
-    step3Desc:        "Filter by year, then export a tax-ready CSV for any crypto tax tool.",
+  // Donation
+  donationTitle:       string;
+  donationDesc:        string;
+  donationCopied:      string;
 
-    // ── Why this tool ─────────────────────────────────────────────────────
-    whyTitle:         "Why this tool?",
-    why1:             "Built for Stacks users",
-    why2:             "Designed for tax reporting",
-    why3:             "No data stored. Ever.",
-
-    // ── Donation ──────────────────────────────────────────────────────────
-    donationTitle:    "If this tool saved you time, consider supporting it",
-    donationBtn:      "Donate · flor.btc",
-    copiedDonation:   "Address copied!",
-
-    // ── Misc ──────────────────────────────────────────────────────────────
-    previewTitle:     "Preview",
-    stxTransfers:     "transaction",
-    stxTransfersP:    "transactions",
-    showingOf:        "Showing",
-    showingOf2:       "of",
-    showingOf3:       "— all rows included in the CSV.",
-    colDate:          "Date",
-    colDirection:     "Direction",
-    colAmount:        "Amount (STX)",
-    colFee:           "Fee (STX)",
-    colHash:          "Tx Hash",
-    dirReceived:      "Received",
-    dirSent:          "Sent",
-    dirSelf:          "Self",
-    resolved:         "Resolved",
-    loadingText:      "Fetching all transactions from the Stacks blockchain…",
-    errorTitle:       "Something went wrong",
-    footerText:       "Data by",
-    footerSuffix:     "· Open-source · No data stored",
-    language:         "ES",
-  },
-
-  es: {
-    heroH1:           "Exporta tus transacciones Stacks para impuestos en segundos",
-    heroSub:          "Descarga un CSV limpio y listo para impuestos desde tu wallet STX. Sin registro.",
-    trustBadge:       "Gratis · Sin registro · Herramienta abierta",
-    addressLabel:     "Tu dirección Stacks o nombre BNS",
-    addressHint:      "Acepta direcciones SP… y nombres BNS como",
-    addressExample:   "Ejemplo: SP3FBR2AGK5H229ANADEN...",
-    noDataStored:     "No almacenamos tus datos",
-    exportBtn:        "Exportar →",
-    fetching:         "Obteniendo…",
-    filterTitle:      "Filtrar por fecha",
-    from:             "Desde",
-    to:               "Hasta",
-    thisYear:         "Este año",
-    lastYear:         "Año pasado",
-    last30Days:       "Últimos 30 días",
-    txFound:          "transacciones encontradas",
-    txFoundSingle:    "transacción encontrada",
-    totalOnChain:     "Txs totales on-chain",
-    stxTransfersStat: "Transferencias STX",
-    summaryTitle:     "Resumen fiscal",
-    received:         "Recibido",
-    sent:             "Enviado",
-    fees:             "Comisiones",
-    transactions:     "Transacciones",
-    downloadBtn:      "Descargar CSV para impuestos",
-    copyBtn:          "Copiar CSV",
-    copiedBtn:        "¡Copiado!",
-    compatNote:       "Compatible con Koinly, CoinTracking y otras herramientas fiscales",
-    noTxFound:        "No se encontraron transferencias STX para esta dirección.",
-    noTxDesc:         "Esta dirección no tiene transferencias STX simples.",
-    noTxInRange:      "No se encontraron transacciones en este rango de fechas.",
-    noTxInRangeHint:  "Prueba seleccionando un período diferente.",
-    howItWorks:       "Cómo funciona",
-    step1Title:       "Ingresa tu dirección",
-    step1Desc:        "Pega tu dirección SP… o nombre BNS (ej. flor.btc).",
-    step2Title:       "Obtenemos todo",
-    step2Desc:        "Todas las transferencias STX desde la blockchain. Sin almacenamiento.",
-    step3Title:       "Descarga tu CSV",
-    step3Desc:        "Filtra por año y exporta un CSV para cualquier herramienta fiscal.",
-    whyTitle:         "¿Por qué esta herramienta?",
-    why1:             "Construida para usuarios de Stacks",
-    why2:             "Diseñada para reportes fiscales",
-    why3:             "Sin almacenamiento de datos. Nunca.",
-    donationTitle:    "Si esta herramienta te ahorró tiempo, considera apoyarla",
-    donationBtn:      "Donar · flor.btc",
-    copiedDonation:   "¡Dirección copiada!",
-    previewTitle:     "Vista previa",
-    stxTransfers:     "transacción",
-    stxTransfersP:    "transacciones",
-    showingOf:        "Mostrando",
-    showingOf2:       "de",
-    showingOf3:       "— todas incluidas en el CSV.",
-    colDate:          "Fecha",
-    colDirection:     "Dirección",
-    colAmount:        "Cantidad (STX)",
-    colFee:           "Comisión (STX)",
-    colHash:          "Hash Tx",
-    dirReceived:      "Recibido",
-    dirSent:          "Enviado",
-    dirSelf:          "Propio",
-    resolved:         "Resuelto",
-    loadingText:      "Obteniendo transacciones de la blockchain de Stacks…",
-    errorTitle:       "Algo salió mal",
-    footerText:       "Datos de",
-    footerSuffix:     "· Código abierto · Sin almacenamiento",
-    language:         "EN",
-  },
-} as const;
-
-export type TranslationKey = keyof typeof translations.en;
-
-export function useTranslations(lang: Lang) {
-  return (key: TranslationKey): string => translations[lang][key];
+  // Errors
+  invalidAddress:      string;
+  fetchError:          string;
+  emptyResult:         string;
 }
+
+const en: Translations = {
+  title:               "Stacks CSV Exporter",
+  subtitle:            "Export your STX transactions for tax reporting",
+  placeholder:         "Enter STX address or BNS name (e.g. flor.btc)",
+  fetchButton:         "Fetch Transactions",
+  fetching:            "Fetching transactions…",
+
+  dateRange:           "Date Range",
+  from:                "From",
+  to:                  "To",
+  thisYear:            "This Year",
+  lastYear:            "Last Year",
+  last30Days:          "Last 30 Days",
+
+  received:            "Received",
+  sent:                "Sent",
+  fees:                "Fees",
+  transactions:        "Transactions",
+  otherTokens:         "Other Tokens",
+
+  // Stacking rewards
+  stackingRewards:     "Stacking Rewards (PoX)",
+  btcReceived:         "BTC Received",
+  stackingRewardsNote: "BTC earned by locking STX in Proof-of-Transfer cycles. Reported as income in tax tools like Koinly.",
+
+  tablePreview:        "Transaction Preview",
+  date:                "Date",
+  type:                "Type",
+  amount:              "Amount",
+  currency:            "Currency",
+  fee:                 "Fee",
+  txHash:              "Tx Hash",
+  noTransactions:      "No transactions found for this date range.",
+  showingRows:         "Showing first 10 rows",
+
+  downloadCsv:         "Download CSV",
+  copyCsv:             "Copy CSV",
+  copied:              "Copied!",
+
+  noDataStored:        "No data stored. Transactions are fetched live and never saved.",
+  openSource:          "Open source",
+
+  donationTitle:       "Support this tool",
+  donationDesc:        "If this saved you time, consider tipping:",
+  donationCopied:      "Address copied!",
+
+  invalidAddress:      "Please enter a valid STX address (SP… / SM…) or BNS name.",
+  fetchError:          "Failed to fetch transactions. Please try again.",
+  emptyResult:         "No transactions found for this address.",
+};
+
+const es: Translations = {
+  title:               "Stacks CSV Exporter",
+  subtitle:            "Exporta tus transacciones STX para declarar impuestos",
+  placeholder:         "Dirección STX o nombre BNS (ej. flor.btc)",
+  fetchButton:         "Obtener Transacciones",
+  fetching:            "Obteniendo transacciones…",
+
+  dateRange:           "Rango de Fechas",
+  from:                "Desde",
+  to:                  "Hasta",
+  thisYear:            "Este Año",
+  lastYear:            "Año Pasado",
+  last30Days:          "Últimos 30 Días",
+
+  received:            "Recibido",
+  sent:                "Enviado",
+  fees:                "Comisiones",
+  transactions:        "Transacciones",
+  otherTokens:         "Otros Tokens",
+
+  // Stacking rewards
+  stackingRewards:     "Recompensas de Stacking (PoX)",
+  btcReceived:         "BTC Recibido",
+  stackingRewardsNote: "BTC ganado al bloquear STX en ciclos de Proof-of-Transfer. Se reporta como ingreso en herramientas como Koinly.",
+
+  tablePreview:        "Vista previa",
+  date:                "Fecha",
+  type:                "Tipo",
+  amount:              "Cantidad",
+  currency:            "Moneda",
+  fee:                 "Comisión",
+  txHash:              "Tx Hash",
+  noTransactions:      "No se encontraron transacciones en este rango de fechas.",
+  showingRows:         "Mostrando primeras 10 filas",
+
+  downloadCsv:         "Descargar CSV",
+  copyCsv:             "Copiar CSV",
+  copied:              "¡Copiado!",
+
+  noDataStored:        "Sin almacenamiento de datos. Las transacciones se obtienen en vivo y nunca se guardan.",
+  openSource:          "Código abierto",
+
+  donationTitle:       "Apoya esta herramienta",
+  donationDesc:        "Si te ahorró tiempo, considera una propina:",
+  donationCopied:      "¡Dirección copiada!",
+
+  invalidAddress:      "Ingresa una dirección STX válida (SP… / SM…) o nombre BNS.",
+  fetchError:          "Error al obtener transacciones. Inténtalo de nuevo.",
+  emptyResult:         "No se encontraron transacciones para esta dirección.",
+};
+
+export const translations: Record<Lang, Translations> = { en, es };
