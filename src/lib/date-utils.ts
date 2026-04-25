@@ -1,7 +1,6 @@
 /**
  * date-utils.ts
- * Pure utility functions for date filtering and formatting.
- * All comparisons use UTC midnight to avoid timezone issues.
+ * Pure utility functions for date filtering, range presets, and summary computation.
  */
 
 import type { CsvRow } from "@/types";
@@ -14,17 +13,15 @@ export interface DateRange {
 }
 
 export interface TransactionSummary {
-  received:     number; // total STX received
-  sent:         number; // total STX sent
-  fees:         number; // total STX fees paid
-  count:        number; // number of transactions
+  received:     number;   // total STX received
+  sent:         number;   // total STX sent
+  fees:         number;   // total STX fees paid
+  count:        number;   // total row count
+  tokenSummary: Record<string, { received: number; sent: number }>; // per-token
 }
 
-// ─── Date string helpers ───────────────────────────────────────────────────
+// ─── Formatting ─────────────────────────────────────────────────────────────
 
-/**
- * Formats a Date object as "YYYY-MM-DD" for use in HTML date inputs.
- */
 export function formatDateForInput(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -32,101 +29,81 @@ export function formatDateForInput(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/**
- * Parses a "YYYY-MM-DD" string to a UTC midnight Date object.
- * The end-of-day boundary is handled in the filter with +1 day logic.
- */
 function parseInputDate(dateStr: string): Date {
-  // new Date("YYYY-MM-DD") is parsed as UTC midnight by the spec
   return new Date(dateStr + "T00:00:00.000Z");
 }
 
-// ─── Quick-range presets ───────────────────────────────────────────────────
+// ─── Presets ─────────────────────────────────────────────────────────────────
 
-/** Jan 1 → Dec 31 of the current year (UTC). */
 export function getThisYearRange(): DateRange {
   const year = new Date().getUTCFullYear();
-  return {
-    from: `${year}-01-01`,
-    to:   `${year}-12-31`,
-  };
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
 }
 
-/** Jan 1 → Dec 31 of last year (UTC). */
 export function getLastYearRange(): DateRange {
   const year = new Date().getUTCFullYear() - 1;
-  return {
-    from: `${year}-01-01`,
-    to:   `${year}-12-31`,
-  };
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
 }
 
-/** Today − 30 days → today (UTC). */
 export function getLast30DaysRange(): DateRange {
   const today = new Date();
   const from  = new Date(today);
   from.setUTCDate(today.getUTCDate() - 30);
-  return {
-    from: formatDateForInput(from),
-    to:   formatDateForInput(today),
-  };
+  return { from: formatDateForInput(from), to: formatDateForInput(today) };
 }
 
-/** Returns the default range: current year. */
 export function getDefaultRange(): DateRange {
   return getThisYearRange();
 }
 
-// ─── Filtering ─────────────────────────────────────────────────────────────
+// ─── Filtering ───────────────────────────────────────────────────────────────
 
-/**
- * Filters CsvRow array by a date range (inclusive on both ends).
- *
- * Comparison is done in UTC:
- *   include if:  fromMidnight <= txDate < (toMidnight + 1 day)
- *
- * @param rows      All fetched CSV rows
- * @param range     { from: "YYYY-MM-DD", to: "YYYY-MM-DD" }
- */
-export function filterRowsByDateRange(
-  rows: CsvRow[],
-  range: DateRange
-): CsvRow[] {
+export function filterRowsByDateRange(rows: CsvRow[], range: DateRange): CsvRow[] {
   if (!range.from && !range.to) return rows;
 
-  const fromMs = range.from
-    ? parseInputDate(range.from).getTime()
-    : -Infinity;
-
-  // "to" is inclusive: add 1 day so the entire "to" day is included
-  const toMs = range.to
+  const fromMs = range.from ? parseInputDate(range.from).getTime() : -Infinity;
+  const toMs   = range.to
     ? parseInputDate(range.to).getTime() + 24 * 60 * 60 * 1000
     : Infinity;
 
-  return rows.filter((row) => {
+  return rows.filter(row => {
     const txMs = new Date(row.date).getTime();
     return txMs >= fromMs && txMs < toMs;
   });
 }
 
-// ─── Summary computation ───────────────────────────────────────────────────
+// ─── Summary ─────────────────────────────────────────────────────────────────
 
 /**
- * Computes aggregate stats from a CsvRow array.
- * Parses string amounts safely; invalid values are treated as 0.
+ * Computes aggregate stats.
+ * STX figures are in the top-level received/sent/fees.
+ * Other tokens accumulate in tokenSummary keyed by symbol.
  */
 export function computeSummary(rows: CsvRow[]): TransactionSummary {
   let received = 0;
   let sent     = 0;
   let fees     = 0;
+  const tokenSummary: Record<string, { received: number; sent: number }> = {};
 
   for (const row of rows) {
-    const r = parseFloat(row.receivedAmount);
-    const s = parseFloat(row.sentAmount);
-    const f = parseFloat(row.feeAmount);
-    if (!isNaN(r)) received += r;
-    if (!isNaN(s)) sent     += s;
-    if (!isNaN(f)) fees     += f;
+    const isStx = row.receivedCurrency === "STX" || row.sentCurrency === "STX";
+
+    // STX
+    if (isStx) {
+      const r = parseFloat(row.receivedAmount); if (!isNaN(r)) received += r;
+      const s = parseFloat(row.sentAmount);     if (!isNaN(s)) sent     += s;
+    } else {
+      // FT token
+      const ticker = row.receivedCurrency || row.sentCurrency;
+      if (ticker) {
+        if (!tokenSummary[ticker]) tokenSummary[ticker] = { received: 0, sent: 0 };
+        const r = parseFloat(row.receivedAmount); if (!isNaN(r)) tokenSummary[ticker].received += r;
+        const s = parseFloat(row.sentAmount);     if (!isNaN(s)) tokenSummary[ticker].sent     += s;
+      }
+    }
+
+    // Fees are always STX
+    const f = parseFloat(row.feeAmount); if (!isNaN(f)) fees += f;
   }
 
   return {
@@ -134,19 +111,20 @@ export function computeSummary(rows: CsvRow[]): TransactionSummary {
     sent:     Math.round(sent     * 1_000_000) / 1_000_000,
     fees:     Math.round(fees     * 1_000_000) / 1_000_000,
     count:    rows.length,
+    tokenSummary,
   };
 }
 
-// ─── CSV filename ──────────────────────────────────────────────────────────
+// ─── Filename ─────────────────────────────────────────────────────────────────
 
-/**
- * Builds a descriptive filename for the CSV export.
- * Example: "stx-SP2J6ZY48-2025-01-01_to_2025-12-31.csv"
- */
 export function buildCsvFilename(address: string, range: DateRange): string {
   const addr = address.slice(0, 10);
-  if (range.from && range.to && range.from === `${new Date().getUTCFullYear()}-01-01` && range.to === `${new Date().getUTCFullYear()}-12-31`) {
-    return `stx-${addr}-${new Date().getUTCFullYear()}.csv`;
+  const year = new Date().getUTCFullYear();
+  if (
+    range.from === `${year}-01-01` &&
+    range.to   === `${year}-12-31`
+  ) {
+    return `stx-${addr}-${year}.csv`;
   }
   const from = range.from || "start";
   const to   = range.to   || "end";
