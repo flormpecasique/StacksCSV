@@ -1,49 +1,103 @@
-/**
- * Public API for the realized-gains engine.
- *
- * Typical usage in StacksCSV (client-side, privacy-first):
- *
- *   import { computeRealizedGains, CoinGeckoPriceProvider, CachingPriceProvider } from "@/lib/gains";
- *
- *   const provider = new CachingPriceProvider(new CoinGeckoPriceProvider());
- *   const { result, summary, errors } = await computeRealizedGains(flows, provider, {
- *     method: "FIFO", fiat: "EUR", longTermThresholdDays: 0, // ES: no ST/LT split
- *   });
- *
- * `flows` is your parsed transactions mapped to RawFlow[]. Nothing is stored;
- * the only network calls are daily price lookups keyed by (asset, day).
- */
-import { priceFlows } from "./pricing";
-import { runEngine } from "./engine";
-import { summarize, type ReportSummary } from "./report";
-import type { EngineConfig, RawFlow, RealizedGainsResult } from "./types";
-import type { PriceProvider } from "./prices/provider";
+// ─── Hiro API: transactions ──────────────────────────────────────────────────
 
-export async function computeRealizedGains(
-  flows: RawFlow[],
-  provider: PriceProvider,
-  config: Partial<EngineConfig> = {},
-): Promise<{
-  result: RealizedGainsResult;
-  summary: ReportSummary;
-  errors: Array<{ txid: string; reason: string }>;
-}> {
-  const fiat = config.fiat ?? "USD";
-  const { events, errors } = await priceFlows(flows, provider, fiat, {
-    maxFlows: config.maxEvents,
-  });
-  const result = runEngine(events, config);
-  const summary = summarize(result);
-  return { result, summary, errors };
+export interface HiroTransactionWithTransfers {
+  tx: HiroTransaction;
+  stx_sent:      string;
+  stx_received:  string;
+  stx_transfers: StxTransfer[];
+  ft_transfers:  FtTransfer[];
+  nft_transfers: unknown[];
 }
 
-export { priceFlows } from "./pricing";
-export { runEngine } from "./engine";
-export { summarize } from "./report";
-export type { ReportSummary } from "./report";
-export { CoinGeckoPriceProvider } from "./prices/coingecko";
-export { CachingPriceProvider } from "./prices/cache";
-export { PriceUnavailableError, toUtcDay } from "./prices/provider";
-export type { PriceProvider } from "./prices/provider";
-export { getAsset, requireAsset, isKnownAsset } from "./assets";
-export * from "./types";
+export interface HiroTransaction {
+  tx_id:                string;
+  tx_type:              string;   // "token_transfer" | "contract_call" | "coinbase" | ...
+  tx_status:            string;   // "success" | "abort_by_response" | ...
+  block_time?:          number;   // Stacks block time (Unix seconds, Nakamoto)
+  block_time_iso?:      string;
+  burn_block_time?:     number;   // Bitcoin anchor block time (Unix seconds)
+  burn_block_time_iso?: string;
+  sender_address:       string;
+  fee_rate:             string;
+  contract_call?: {
+    contract_id:   string;
+    function_name: string;
+  };
+  token_transfer?: {
+    recipient_address: string;
+    amount:            string;
+    memo:              string;
+  };
+}
+
+export interface StxTransfer {
+  amount:     string;
+  sender?:    string;
+  recipient?: string;
+}
+
+/**
+ * SIP-010 fungible token transfer.
+ * sender/recipient are required because transform.ts dereferences them directly.
+ */
+export interface FtTransfer {
+  amount:           string;
+  asset_identifier: string;   // e.g. "SP3K8...token::alex"
+  sender:           string;
+  recipient:        string;
+}
+
+/**
+ * Paginated response from /extended/v1/address/{addr}/transactions_with_transfers
+ */
+export interface HiroTransactionsWithTransfersResponse {
+  limit:   number;
+  offset:  number;
+  total:   number;
+  results: HiroTransactionWithTransfers[];
+}
+
+// ─── Token metadata ──────────────────────────────────────────────────────────
+
+export interface TokenMetadata {
+  symbol:   string;
+  decimals: number;
+  name:     string;
+}
+
+// ─── CSV row ─────────────────────────────────────────────────────────────────
+
+/**
+ * One row in the exported CSV.
+ *
+ * Compatible with Koinly, CoinTracking, and Awaken import formats.
+ *
+ * txType values:
+ *   "STX Transfer"           – direct STX send/receive
+ *   "FT Transfer (SYMBOL)"   – SIP-010 fungible token transfer
+ *   "Stacking Reward (PoX)"  – BTC reward from Proof-of-Transfer
+ */
+export interface CsvRow {
+  date:             string;   // ISO 8601 UTC
+  receivedAmount:   string;
+  receivedCurrency: string;
+  sentAmount:       string;
+  sentCurrency:     string;
+  feeAmount:        string;
+  feeCurrency:      string;
+  txHash:           string;
+  txType:           string;
+}
+
+// ─── API responses (our own /api/transactions endpoint) ──────────────────────
+
+export interface ApiSuccessResponse {
+  address:       string;
+  resolvedFrom?: string;   // present when input was a BNS name
+  rows:          CsvRow[];
+  total:         number;   // total tx count on-chain (before date filter)
+}
+
+export interface ApiErrorResponse {
+  error: string;
+}
