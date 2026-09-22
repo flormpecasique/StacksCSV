@@ -50,7 +50,7 @@ export type { PriceProvider } from "./prices/provider";
 export { getAsset, requireAsset, isKnownAsset } from "./assets";
 export { csvRowsToRawFlows } from "./adapter";
 export type { StacksCsvRow, AdapterOptions, AdapterResult } from "./adapter";
-export { getJurisdiction, listJurisdictions, getJurisdictionOptions, engineConfigFor } from "./jurisdictions";
+export { getJurisdiction, listJurisdictions, getJurisdictionOptions, engineConfigFor, getReportLabels, getReportDisclaimer } from "./jurisdictions";
 export type { Jurisdiction, JurisdictionLabels } from "./jurisdictions";
 export { buildTaxReport } from "./report-builder";
 export type { TaxReportDoc, ReportTable, BuildOptions } from "./report-builder";

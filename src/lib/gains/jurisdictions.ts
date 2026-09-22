@@ -256,6 +256,16 @@ register({
   labels: EN_LABELS,
 });
 
+/** Report structural labels by UI language (decoupled from the jurisdiction). */
+export function getReportLabels(lang: string): JurisdictionLabels {
+  return lang?.toLowerCase().startsWith("es") ? ES_LABELS : EN_LABELS;
+}
+
+/** The "not tax advice" disclaimer in the UI language. */
+export function getReportDisclaimer(lang: string): string {
+  return lang?.toLowerCase().startsWith("es") ? COMMON_DISCLAIMER_ES : COMMON_DISCLAIMER_EN;
+}
+
 export function getJurisdiction(code: string): Jurisdiction {
   const j = REGISTRY[(code ?? "").toUpperCase()];
   if (!j) throw new RangeError(`Unknown jurisdiction "${code}". Available: ${listJurisdictions().join(", ")}`);

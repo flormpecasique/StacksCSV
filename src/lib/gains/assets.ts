@@ -44,6 +44,18 @@ register({ id: "DIKO", symbol: "DIKO", decimals: 6, coingeckoId: null });
 register({ id: "BANANA", symbol: "BANANA", decimals: 6, coingeckoId: null });
 register({ id: "NOT", symbol: "NOT", decimals: 0, coingeckoId: null });
 
+// --- More Stacks tokens ---
+// Verified CoinGecko ids (id taken from the coingecko.com/en/coins/<id> URL):
+register({ id: "VELAR", symbol: "VELAR", decimals: 6, coingeckoId: "velar" });   // verified: coingecko.com/en/coins/velar
+register({ id: "USDCx", symbol: "USDCx", decimals: 6, coingeckoId: "usd-coin" }); // bridged USDC → USDC price
+register({ id: "sUSDT", symbol: "sUSDT", decimals: 6, coingeckoId: "tether" });   // USDT-pegged representation
+// Known but not yet priced (no verified feed) → flagged "to review", never mis-priced.
+// To enable pricing: find the token on coingecko.com and copy the id from its
+// URL (e.g. /en/coins/<id>), confirm it's the SAME token, then set coingeckoId.
+register({ id: "stSTX", symbol: "stSTX", decimals: 6, coingeckoId: null }); // liquid stacked STX (trades near STX + yield)
+register({ id: "USDH", symbol: "USDH", decimals: 8, coingeckoId: null });   // Hermetica synthetic USD
+register({ id: "sUSDH", symbol: "sUSDH", decimals: 8, coingeckoId: null });
+
 export function getAsset(id: string): AssetInfo | undefined {
   if (typeof id !== "string" || id.length === 0 || id.length > 64) return undefined;
   return REGISTRY[id.toLowerCase()];

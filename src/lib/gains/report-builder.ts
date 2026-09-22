@@ -39,6 +39,10 @@ export interface BuildOptions {
   errors?: Array<{ txid: string; reason: string }>;
   /** Override the period label (defaults to min–max year found in the data). */
   periodLabel?: string;
+  /** Override the structural labels (e.g. to follow the UI language, not the country). */
+  labels?: JurisdictionLabels;
+  /** Override the disclaimer text (e.g. to follow the UI language). */
+  disclaimer?: string;
 }
 
 function moneyFmt(locale: string, currency: string) {
@@ -70,7 +74,7 @@ export function buildTaxReport(
   jurisdiction: Jurisdiction,
   options: BuildOptions = {},
 ): TaxReportDoc {
-  const L = jurisdiction.labels;
+  const L = options.labels ?? jurisdiction.labels;
   const money = moneyFmt(jurisdiction.locale, jurisdiction.fiat);
   const fmtDate = dateFmt(jurisdiction.locale);
   const showTerm = jurisdiction.longTermThresholdDays > 0;
@@ -177,6 +181,6 @@ export function buildTaxReport(
     income,
     review,
     notes: [jurisdiction.methodNote, ...jurisdiction.notes],
-    disclaimer: jurisdiction.disclaimer,
+    disclaimer: options.disclaimer ?? jurisdiction.disclaimer,
   };
 }
