@@ -261,8 +261,19 @@ export function rowsToCsv(rows: CsvRow[]): string {
     "TxHash", "Type",
   ];
 
-  const esc = (v: string) =>
-    v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
+  // Neutralize spreadsheet formula injection (CSV injection): values that start
+  // with = + - @ (or tab/CR) can execute as formulas when the CSV is opened in
+  // Excel/Sheets. A malicious token symbol/name (from on-chain metadata) could
+  // carry a payload. We prefix such TEXT values with an apostrophe, while leaving
+  // legitimate numbers (e.g. "-5.5") untouched, then apply normal CSV quoting.
+  const risky = /^[=+\-@\t\r]/;
+  const isNumber = /^-?\d+(\.\d+)?$/;
+  const esc = (v: string) => {
+    const s = risky.test(v) && !isNumber.test(v) ? "'" + v : v;
+    return s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
 
   const lines = [
     HEADERS.join(","),
