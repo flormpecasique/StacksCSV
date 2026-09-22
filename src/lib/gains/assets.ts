@@ -40,9 +40,9 @@ register({ id: "WELSH", symbol: "WELSH", decimals: 6, coingeckoId: "welshcorgico
 // VERIFY these ids against live data before trusting the numbers in production.
 register({ id: "USDA", symbol: "USDA", decimals: 6, coingeckoId: null }); // stablecoin, but has depegged — price it, don't assume $1
 register({ id: "xBTC", symbol: "xBTC", decimals: 8, coingeckoId: "bitcoin" }); // wrapped BTC, tracks BTC (proxy)
-register({ id: "DIKO", symbol: "DIKO", decimals: 6, coingeckoId: null });
+register({ id: "DIKO", symbol: "DIKO", decimals: 6, coingeckoId: "arkadiko" });  // verified: coingecko Arkadiko DIKO (Stacks)
 register({ id: "BANANA", symbol: "BANANA", decimals: 6, coingeckoId: null });
-register({ id: "NOT", symbol: "NOT", decimals: 0, coingeckoId: null });
+register({ id: "NOT", symbol: "NOT", decimals: 6, coingeckoId: "nothing-3" });   // verified: coingecko "ID de la API: nothing-3" (Stacks .nope)
 
 // --- More Stacks tokens ---
 // Verified CoinGecko ids (id taken from the coingecko.com/en/coins/<id> URL):
