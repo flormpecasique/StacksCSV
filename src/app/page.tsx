@@ -17,6 +17,16 @@ import {
 } from "@/lib/date-utils";
 import { type Lang, useTranslations } from "@/lib/i18n";
 import type { CsvRow, ApiSuccessResponse, ApiErrorResponse } from "@/types";
+import {
+  csvRowsToRawFlows,
+  computeRealizedGains,
+  buildTaxReport,
+  generateTaxReportPdf,
+  getJurisdiction,
+  engineConfigFor,
+  CoinGeckoPriceProvider,
+  CachingPriceProvider,
+} from "@/lib/gains";
 
 type AppState =
   | { status: "idle" }
@@ -39,6 +49,7 @@ export default function Home() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultRange());
   const [lang,      setLang]      = useState<Lang>("en");
   const [csvCopied, setCsvCopied] = useState(false);
+  const [pdfState,  setPdfState]  = useState<{ status: "idle" | "loading" | "error"; message?: string }>({ status: "idle" });
   const t = useTranslations(lang);
 
   const handleSubmit = useCallback(async (input: string) => {
@@ -76,6 +87,43 @@ export default function Home() {
     await navigator.clipboard.writeText(rowsToCsv(filteredRows));
     setCsvCopied(true);
     setTimeout(() => setCsvCopied(false), 2500);
+  }
+
+  // Builds the tax report PDF entirely in the browser (privacy-first): adapts the
+  // rows, fetches historical prices, computes realized gains, and downloads a PDF.
+  async function handleDownloadPdf() {
+    if (state.status !== "success") return;
+    setPdfState({ status: "loading" });
+    try {
+      const { flows } = csvRowsToRawFlows(filteredRows, {
+        isIncome: (r) => r.txType.includes("Stacking"),
+      });
+      // Jurisdiction defaults from the UI language (ES for Spanish, generic otherwise).
+      const jurisdiction = getJurisdiction(lang === "es" ? "ES" : "INT");
+      const provider = new CachingPriceProvider(new CoinGeckoPriceProvider());
+      const { result, errors } = await computeRealizedGains(
+        flows, provider, engineConfigFor(jurisdiction),
+      );
+      const doc = buildTaxReport(result, jurisdiction, {
+        errors,
+        wallet: state.resolvedFrom ?? state.address,
+      });
+      const blob = await generateTaxReportPdf(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `informe-fiscal-${state.address.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setPdfState({ status: "idle" });
+    } catch {
+      setPdfState({
+        status: "error",
+        message: lang === "es"
+          ? "No se pudo generar el PDF (precios no disponibles o error de red). Inténtalo de nuevo."
+          : "Could not generate the PDF (prices unavailable or network error). Please try again.",
+      });
+    }
   }
 
   return (
@@ -248,6 +296,25 @@ export default function Home() {
                   {t("downloadBtn")}
                 </button>
                 <button
+                  onClick={handleDownloadPdf}
+                  disabled={noInRange || pdfState.status === "loading"}
+                  className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: "var(--bg-700)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}
+                >
+                  {pdfState.status === "loading" ? (
+                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>{lang === "es" ? "Generando…" : "Generating…"}</>
+                  ) : (
+                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>{lang === "es" ? "Descargar PDF" : "Download PDF"}</>
+                  )}
+                </button>
+                <button
                   onClick={handleCopyCsv}
                   disabled={noInRange}
                   className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -275,6 +342,11 @@ export default function Home() {
               <p className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
                 {t("compatNote")}
               </p>
+              {pdfState.status === "error" && (
+                <p className="text-xs break-words" style={{ color: "#f87171", fontFamily: "var(--font-body)" }}>
+                  {pdfState.message}
+                </p>
+              )}
             </div>
 
             {/* Empty range */}
