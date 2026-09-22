@@ -24,8 +24,7 @@ import {
   generateTaxReportPdf,
   getJurisdiction,
   engineConfigFor,
-  CoinGeckoPriceProvider,
-  CachingPriceProvider,
+  createPrefetchedProvider,
 } from "@/lib/gains";
 
 type AppState =
@@ -100,7 +99,20 @@ export default function Home() {
       });
       // Jurisdiction defaults from the UI language (ES for Spanish, generic otherwise).
       const jurisdiction = getJurisdiction(lang === "es" ? "ES" : "INT");
-      const provider = new CachingPriceProvider(new CoinGeckoPriceProvider());
+      // Fetch all historical prices in one batched call to /api/price, with an
+      // overall 60s timeout so this can never hang indefinitely.
+      const provider = await (async () => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 60_000);
+        try {
+          return await createPrefetchedProvider(flows, {
+            fiat: jurisdiction.fiat,
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+      })();
       const { result, errors } = await computeRealizedGains(
         flows, provider, engineConfigFor(jurisdiction),
       );
@@ -342,6 +354,13 @@ export default function Home() {
               <p className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
                 {t("compatNote")}
               </p>
+              {pdfState.status === "loading" && (
+                <p className="text-xs break-words" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)" }}>
+                  {lang === "es"
+                    ? "Generando el informe: consultando los precios históricos para valorar cada operación. Puede tardar unos segundos según el número de transacciones."
+                    : "Building the report: fetching historical prices to value each transaction. This can take a few seconds depending on how many transactions there are."}
+                </p>
+              )}
               {pdfState.status === "error" && (
                 <p className="text-xs break-words" style={{ color: "#f87171", fontFamily: "var(--font-body)" }}>
                   {pdfState.message}
