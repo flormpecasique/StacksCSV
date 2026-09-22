@@ -34,6 +34,16 @@ register({ id: "USDC", symbol: "USDC", decimals: 6, coingeckoId: "usd-coin" });
 register({ id: "ALEX", symbol: "ALEX", decimals: 8, coingeckoId: "alexgo" });
 register({ id: "WELSH", symbol: "WELSH", decimals: 6, coingeckoId: "welshcorgicoin" });
 
+// --- Additional SIP-010 tokens seen in StacksCSV's KNOWN_TOKENS ---
+// coingeckoId set to null where there is no reliable price feed yet: those
+// flows surface in errors[] for manual pricing instead of being valued wrong.
+// VERIFY these ids against live data before trusting the numbers in production.
+register({ id: "USDA", symbol: "USDA", decimals: 6, coingeckoId: null }); // stablecoin, but has depegged — price it, don't assume $1
+register({ id: "xBTC", symbol: "xBTC", decimals: 8, coingeckoId: "bitcoin" }); // wrapped BTC, tracks BTC (proxy)
+register({ id: "DIKO", symbol: "DIKO", decimals: 6, coingeckoId: null });
+register({ id: "BANANA", symbol: "BANANA", decimals: 6, coingeckoId: null });
+register({ id: "NOT", symbol: "NOT", decimals: 0, coingeckoId: null });
+
 export function getAsset(id: string): AssetInfo | undefined {
   if (typeof id !== "string" || id.length === 0 || id.length > 64) return undefined;
   return REGISTRY[id.toLowerCase()];
