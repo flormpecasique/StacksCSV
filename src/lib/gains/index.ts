@@ -46,4 +46,6 @@ export { CachingPriceProvider } from "./prices/cache";
 export { PriceUnavailableError, toUtcDay } from "./prices/provider";
 export type { PriceProvider } from "./prices/provider";
 export { getAsset, requireAsset, isKnownAsset } from "./assets";
+export { csvRowsToRawFlows } from "./adapter";
+export type { StacksCsvRow, AdapterOptions, AdapterResult } from "./adapter";
 export * from "./types";
