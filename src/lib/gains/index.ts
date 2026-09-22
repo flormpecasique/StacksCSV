@@ -43,6 +43,8 @@ export { summarize } from "./report";
 export type { ReportSummary } from "./report";
 export { CoinGeckoPriceProvider } from "./prices/coingecko";
 export { CachingPriceProvider } from "./prices/cache";
+export { createPrefetchedProvider } from "./http-price";
+export type { PrefetchOptions } from "./http-price";
 export { PriceUnavailableError, toUtcDay } from "./prices/provider";
 export type { PriceProvider } from "./prices/provider";
 export { getAsset, requireAsset, isKnownAsset } from "./assets";
