@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import AddressInput     from "@/components/AddressInput";
 import TransactionTable from "@/components/TransactionTable";
 import LoadingSkeleton  from "@/components/LoadingSkeleton";
@@ -24,6 +24,8 @@ import {
   generateTaxReportPdf,
   getJurisdiction,
   getJurisdictionOptions,
+  getReportLabels,
+  getReportDisclaimer,
   engineConfigFor,
   createPrefetchedProvider,
 } from "@/lib/gains";
@@ -51,6 +53,16 @@ export default function Home() {
   const [csvCopied, setCsvCopied] = useState(false);
   const [pdfState,  setPdfState]  = useState<{ status: "idle" | "loading" | "error"; message?: string }>({ status: "idle" });
   const [jurisdictionCode, setJurisdictionCode] = useState<string>(lang === "es" ? "ES" : "INT");
+
+  // Start in the device's language (Spanish devices → Spanish UI + España by
+  // default). Runs once on the client, so no SSR hydration mismatch. The user
+  // can still switch language and jurisdiction manually afterwards.
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("es")) {
+      setLang("es");
+      setJurisdictionCode("ES");
+    }
+  }, []);
   const t = useTranslations(lang);
 
   const handleSubmit = useCallback(async (input: string) => {
@@ -121,6 +133,8 @@ export default function Home() {
       const doc = buildTaxReport(result, jurisdiction, {
         errors,
         wallet: state.resolvedFrom ?? state.address,
+        labels: getReportLabels(lang),
+        disclaimer: getReportDisclaimer(lang),
       });
       const blob = await generateTaxReportPdf(doc);
       const url = URL.createObjectURL(blob);
