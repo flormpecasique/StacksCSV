@@ -3,7 +3,7 @@
  * Converts raw Hiro API transactions_with_transfers into clean CsvRows.
  */
 
-import type { HiroTransactionWithTransfers, FtTransfer, CsvRow } from "@/types";
+import type { HiroTransactionWithTransfers, CsvRow } from "@/types";
 import { getTokenMetadata } from "@/lib/hiro-api";
 
 // ─── Date resolution ────────────────────────────────────────────────────────
@@ -100,6 +100,67 @@ function stxRows(
   }];
 }
 
+// ─── STX transfer rows from contract calls (swaps / DeFi) ───────────────────
+
+/**
+ * Captures STX that moves INSIDE a contract call (DEX swaps, DeFi, etc.) via the
+ * `stx_transfers` array. `stxRows` above only handles `tx_type === "token_transfer"`
+ * (direct sends), so without this the STX leg of a swap was silently dropped and
+ * a swap looked like a one-sided FT transfer.
+ *
+ * This is called ONLY for non-token_transfer txs (see the main loop), so it can
+ * never double-count a simple STX send that `stxRows` already produced.
+ *
+ * Notes:
+ *  - `stx_transfers[].sender/recipient` are optional in the Hiro payload; entries
+ *    that don't involve this wallet (internal protocol movements) are skipped.
+ *  - The network fee is attached to the first outgoing STX leg only, exactly once,
+ *    mirroring the fee logic in `stxRows` / `ftRows`.
+ */
+function stxTransferRows(
+  item: HiroTransactionWithTransfers,
+  walletAddress: string,
+  date: string,
+  includeFee: boolean
+): CsvRow[] {
+  const { tx } = item;
+  if (!item.stx_transfers || item.stx_transfers.length === 0) return [];
+
+  const wallet = walletAddress.toLowerCase();
+  const rows: CsvRow[] = [];
+  let feeUsed = false;
+
+  // Human-readable label from the contract call when available.
+  const fnName = tx.contract_call?.function_name;
+  const label  = fnName ? `STX Transfer (${fnName})` : "STX Transfer (contract)";
+
+  for (const t of item.stx_transfers) {
+    const isSender    = (t.sender    ?? "").toLowerCase() === wallet;
+    const isRecipient = (t.recipient ?? "").toLowerCase() === wallet;
+    if (!isSender && !isRecipient) continue;
+
+    const stxAmount = microStxToStx(t.amount);
+    if (!stxAmount) continue; // zero/invalid amount → skip (matches rawToDecimal)
+
+    const feeAmount = isSender && includeFee && !feeUsed ? microStxToStx(tx.fee_rate) : "";
+    if (feeAmount) feeUsed = true;
+
+    rows.push({
+      date,
+      receivedAmount:   isRecipient ? stxAmount : "",
+      receivedCurrency: isRecipient ? "STX" : "",
+      sentAmount:       isSender ? stxAmount : "",
+      sentCurrency:     isSender ? "STX" : "",
+      feeAmount,
+      feeCurrency:      feeAmount ? "STX" : "",
+      txHash:           tx.tx_id,
+      txType:           label,
+    });
+  }
+
+  return rows;
+}
+
 // ─── FT transfer rows ───────────────────────────────────────────────────────
 
 async function ftRows(
@@ -164,7 +225,12 @@ export async function transformTransactions(
     const date = resolveTransactionDate(item.tx);
     const isTxSender = item.tx.sender_address.toLowerCase() === wallet;
 
-    const stxR = stxRows(item, walletAddress, date, true);
+    // Direct STX sends come through tx.token_transfer (stxRows); STX that moves
+    // inside a contract call (swaps/DeFi) comes through stx_transfers. These are
+    // mutually exclusive per tx, so we pick one source and never double-count.
+    const stxR = item.tx.tx_type === "token_transfer"
+      ? stxRows(item, walletAddress, date, true)
+      : stxTransferRows(item, walletAddress, date, true);
     const stxClaimedFee = stxR.some(r => !!r.feeAmount);
     const ftR  = await ftRows(item, walletAddress, date, stxClaimedFee);
 
