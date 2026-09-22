@@ -52,8 +52,8 @@ register({ id: "sUSDT", symbol: "sUSDT", decimals: 6, coingeckoId: "tether" }); 
 // Known but not yet priced (no verified feed) → flagged "to review", never mis-priced.
 // To enable pricing: find the token on coingecko.com and copy the id from its
 // URL (e.g. /en/coins/<id>), confirm it's the SAME token, then set coingeckoId.
-register({ id: "stSTX", symbol: "stSTX", decimals: 6, coingeckoId: null }); // liquid stacked STX (trades near STX + yield)
-register({ id: "USDH", symbol: "USDH", decimals: 8, coingeckoId: null });   // Hermetica synthetic USD
+register({ id: "stSTX", symbol: "stSTX", decimals: 6, coingeckoId: "stacking-dao" });   // verified: coingecko "ID de la API: stacking-dao"
+register({ id: "USDH", symbol: "USDH", decimals: 8, coingeckoId: "hermetica-usdh" });   // verified: coingecko "ID de la API: hermetica-usdh" (fluctúa, no asumir $1)
 register({ id: "sUSDH", symbol: "sUSDH", decimals: 8, coingeckoId: null });
 
 export function getAsset(id: string): AssetInfo | undefined {
