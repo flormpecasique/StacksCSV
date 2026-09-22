@@ -23,6 +23,7 @@ import {
   buildTaxReport,
   generateTaxReportPdf,
   getJurisdiction,
+  getJurisdictionOptions,
   engineConfigFor,
   createPrefetchedProvider,
 } from "@/lib/gains";
@@ -49,6 +50,7 @@ export default function Home() {
   const [lang,      setLang]      = useState<Lang>("en");
   const [csvCopied, setCsvCopied] = useState(false);
   const [pdfState,  setPdfState]  = useState<{ status: "idle" | "loading" | "error"; message?: string }>({ status: "idle" });
+  const [jurisdictionCode, setJurisdictionCode] = useState<string>(lang === "es" ? "ES" : "INT");
   const t = useTranslations(lang);
 
   const handleSubmit = useCallback(async (input: string) => {
@@ -97,8 +99,8 @@ export default function Home() {
       const { flows } = csvRowsToRawFlows(filteredRows, {
         isIncome: (r) => r.txType.includes("Stacking"),
       });
-      // Jurisdiction defaults from the UI language (ES for Spanish, generic otherwise).
-      const jurisdiction = getJurisdiction(lang === "es" ? "ES" : "INT");
+      // Jurisdiction chosen by the user in the selector (method + currency + labels).
+      const jurisdiction = getJurisdiction(jurisdictionCode);
       // Fetch all historical prices in one batched call to /api/price, with an
       // overall 60s timeout so this can never hang indefinitely.
       const provider = await (async () => {
@@ -291,6 +293,32 @@ export default function Home() {
             {/* Export bar */}
             <div className="rounded-xl p-4 animate-fade-in flex flex-col gap-3"
               style={{ background: "var(--bg-800)", border: "1px solid var(--border)" }}>
+              {/* Jurisdiction selector — sets the PDF report's method & currency */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <label htmlFor="jurisdiction" className="text-xs font-semibold whitespace-nowrap"
+                    style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>
+                    {lang === "es" ? "Jurisdicción del informe PDF" : "PDF report jurisdiction"}
+                  </label>
+                  <select
+                    id="jurisdiction"
+                    value={jurisdictionCode}
+                    onChange={(e) => setJurisdictionCode(e.target.value)}
+                    className="w-full sm:w-auto px-3 py-2 rounded-lg text-sm cursor-pointer"
+                    style={{ background: "var(--bg-700)", border: "1px solid var(--border)", color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+                  >
+                    {getJurisdictionOptions().map((o) => (
+                      <option key={o.code} value={o.code}>{o.flag} {o.name} · {o.fiat}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
+                  {lang === "es"
+                    ? "Define el método de cálculo y la moneda del informe. No es asesoramiento fiscal."
+                    : "Sets the report's cost-basis method and currency. Not tax advice."}
+                </p>
+              </div>
+
               {/* Buttons: full-width on mobile, auto on sm+ */}
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
