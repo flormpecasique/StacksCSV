@@ -12,7 +12,7 @@
  * wallet address. The address never leaves the device through this path.
  */
 import { Decimal, toDecimal } from "./decimal";
-import { requireAsset } from "./assets";
+import { getAsset } from "./assets";
 import { PriceUnavailableError, toUtcDay } from "./prices/provider";
 import type { PriceProvider } from "./prices/provider";
 import type { FiatCurrency, RawFlow } from "./types";
@@ -77,8 +77,10 @@ export async function createPrefetchedProvider(
   // will throw PriceUnavailableError when asked (flagged for review, never $0).
   const ids = new Set<string>();
   for (const a of assets) {
-    const cg = requireAsset(a).coingeckoId;
-    if (cg) ids.add(cg);
+    // Unknown tokens (not in the registry) are skipped here rather than crashing
+    // the whole report; the pricing stage flags their transactions for review.
+    const info = getAsset(a);
+    if (info?.coingeckoId) ids.add(info.coingeckoId);
   }
 
   const byId = new Map<string, Series>();
@@ -101,8 +103,8 @@ export async function createPrefetchedProvider(
 
   return {
     async getDailyPrice(assetId: string, dayUtc: string): Promise<Decimal> {
-      const info = requireAsset(assetId);
-      if (info.coingeckoId === null) {
+      const info = getAsset(assetId);
+      if (!info || info.coingeckoId === null) {
         throw new PriceUnavailableError(assetId, dayUtc, "no price feed configured");
       }
       const series = byId.get(info.coingeckoId);
