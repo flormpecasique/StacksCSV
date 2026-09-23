@@ -4,12 +4,18 @@
  * A jurisdiction profile does NOT encode a country's tax law. It only sets the
  * handful of knobs that legitimately vary between countries — cost-basis method,
  * currency, whether short/long term matters, and the report's language/labels —
- * plus non-binding notes. The universal, correct figures come from the engine;
- * the legal filing is the user's / their accountant's responsibility.
- *
- * Add a country by adding one profile. Everything downstream stays the same.
+ * plus non-binding notes (bilingual, so the whole report follows the UI language).
+ * The universal, correct figures come from the engine; the legal filing is the
+ * user's / their accountant's responsibility.
  */
 import type { CostBasisMethod, EngineConfig, FiatCurrency } from "./types";
+
+export interface LocalizedText { es: string; en: string; }
+export interface LocalizedList { es: string[]; en: string[]; }
+
+function isEs(lang: string): boolean { return !!lang && lang.toLowerCase().startsWith("es"); }
+function pickText(t: LocalizedText, lang: string): string { return isEs(lang) ? t.es : t.en; }
+function pickList(l: LocalizedList, lang: string): string[] { return isEs(lang) ? l.es : l.en; }
 
 export interface JurisdictionLabels {
   reportTitle: string;
@@ -63,11 +69,11 @@ export interface Jurisdiction {
   fiat: FiatCurrency;
   locale: string; // BCP-47, for number/date formatting
   method: CostBasisMethod;
-  methodNote: string;
+  methodNote: LocalizedText;
   /** 0 = no short/long-term distinction; the term column is hidden. */
   longTermThresholdDays: number;
-  notes: string[];
-  disclaimer: string;
+  notes: LocalizedList;
+  disclaimer: LocalizedText;
   labels: JurisdictionLabels;
 }
 
@@ -121,170 +127,253 @@ const EN_LABELS: JurisdictionLabels = {
   termShort: "Short", termLong: "Long", termMixed: "Mixed", page: "Page",
 };
 
-const COMMON_DISCLAIMER_ES =
-  "Este documento es un informe técnico generado a partir de datos on-chain con el método indicado. " +
-  "No constituye asesoramiento fiscal ni contable. La calificación legal de cada operación y las " +
-  "obligaciones de declaración son responsabilidad del contribuyente y su asesor. Verifica las cifras " +
-  "y la normativa vigente de tu jurisdicción antes de presentar cualquier declaración.";
-
-const COMMON_DISCLAIMER_EN =
-  "This document is a technical report generated from on-chain data using the stated method. " +
-  "It is not tax or accounting advice. The legal treatment of each transaction and all filing " +
-  "obligations are the responsibility of the taxpayer and their advisor. Verify the figures and the " +
-  "current rules of your jurisdiction before filing.";
+const DISCLAIMER: LocalizedText = {
+  es:
+    "Este documento es un informe técnico generado a partir de datos on-chain con el método indicado. " +
+    "No constituye asesoramiento fiscal ni contable. La calificación legal de cada operación y las " +
+    "obligaciones de declaración son responsabilidad del contribuyente y su asesor. Verifica las cifras " +
+    "y la normativa vigente de tu jurisdicción antes de presentar cualquier declaración.",
+  en:
+    "This document is a technical report generated from on-chain data using the stated method. " +
+    "It is not tax or accounting advice. The legal treatment of each transaction and all filing " +
+    "obligations are the responsibility of the taxpayer and their advisor. Verify the figures and the " +
+    "current rules of your jurisdiction before filing.",
+};
 
 const REGISTRY: Record<string, Jurisdiction> = Object.create(null);
-
 function register(j: Jurisdiction) { REGISTRY[j.code.toUpperCase()] = j; }
 
 register({
-  code: "ES",
-  name: "España",
-  flag: "🇪🇸",
-  fiat: "EUR",
-  locale: "es-ES",
+  code: "ES", name: "España", flag: "🇪🇸", fiat: "EUR", locale: "es-ES",
   method: "FIFO",
-  methodNote:
-    "FIFO. Criterio general de valores homogéneos aplicado por la AEAT a criptomonedas. " +
-    "Confírmalo con tu asesor para tu caso concreto.",
-  longTermThresholdDays: 0, // España no distingue corto/largo plazo para el tipo aplicable
-  notes: [
-    "Las ganancias y pérdidas por transmisión de criptoactivos se integran, con carácter general, en la base imponible del ahorro del IRPF.",
-    "Este informe muestra la ganancia/pérdida y los ingresos, NO la cuota a pagar: los tipos del ahorro cambian y los aplica tu declaración/asesor.",
-    "El tratamiento de recompensas y Staking no es unánime (rendimiento del capital mobiliario, ganancia o actividad económica). Revísalo con tu asesor.",
-    "Pueden existir obligaciones informativas específicas para criptoactivos. Consulta la normativa vigente de la AEAT.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_ES,
-  labels: ES_LABELS,
+  methodNote: {
+    es: "FIFO. Criterio general de valores homogéneos aplicado por la AEAT a criptomonedas. Confírmalo con tu asesor para tu caso concreto.",
+    en: "FIFO. The general 'homogeneous assets' criterion applied by the Spanish tax authority (AEAT) to crypto. Confirm it with your advisor for your specific case.",
+  },
+  longTermThresholdDays: 0,
+  notes: {
+    es: [
+      "Las ganancias y pérdidas por transmisión de criptoactivos se integran, con carácter general, en la base imponible del ahorro del IRPF.",
+      "Este informe muestra la ganancia/pérdida y los ingresos, NO la cuota a pagar: los tipos del ahorro cambian y los aplica tu declaración/asesor.",
+      "El tratamiento de recompensas y Staking no es unánime (rendimiento del capital mobiliario, ganancia o actividad económica). Revísalo con tu asesor.",
+      "Pueden existir obligaciones informativas específicas para criptoactivos. Consulta la normativa vigente de la AEAT.",
+    ],
+    en: [
+      "Gains and losses on the transfer of crypto assets are generally included in the savings tax base of Spanish personal income tax (IRPF).",
+      "This report shows the gain/loss and income, NOT the tax due: savings rates change and are applied by your tax return/advisor.",
+      "The treatment of rewards and Staking is not settled (investment income, capital gain, or business activity). Review it with your advisor.",
+      "There may be specific reporting obligations for crypto assets. Check the current AEAT rules.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: ES_LABELS,
 });
 
 register({
-  code: "US",
-  name: "United States",
-  flag: "🇺🇸",
-  fiat: "USD",
-  locale: "en-US",
+  code: "US", name: "United States", flag: "🇺🇸", fiat: "USD", locale: "en-US",
   method: "FIFO",
-  methodNote:
-    "FIFO by default. HIFO or specific-identification are permitted with adequate records — " +
-    "choose your method with your advisor.",
+  methodNote: {
+    en: "FIFO by default. HIFO or specific-identification are permitted with adequate records — choose your method with your advisor.",
+    es: "FIFO por defecto. Se permiten HIFO o identificación específica con registros adecuados; elige el método con tu asesor.",
+  },
   longTermThresholdDays: 365,
-  notes: [
-    "Capital gains/losses are generally reported on Form 8949 and Schedule D; holding period over one year is long-term.",
-    "Staking and other rewards are generally ordinary income at fair market value on receipt, which then becomes the cost basis.",
-    "This report shows figures, not tax owed: rates and thresholds are applied by your filing software or advisor.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_EN,
-  labels: EN_LABELS,
+  notes: {
+    en: [
+      "Capital gains/losses are generally reported on Form 8949 and Schedule D; a holding period over one year is long-term.",
+      "Staking and other rewards are generally ordinary income at fair market value on receipt, which then becomes the cost basis.",
+      "This report shows figures, not tax owed: rates and thresholds are applied by your filing software or advisor.",
+    ],
+    es: [
+      "Las ganancias/pérdidas de capital se declaran generalmente en el Formulario 8949 y el Schedule D; un periodo de tenencia superior a un año es a largo plazo.",
+      "El Staking y otras recompensas son, por lo general, ingreso ordinario a valor de mercado en el momento de recibirse, que pasa a ser el coste de adquisición.",
+      "Este informe muestra cifras, no la cuota a pagar: los tipos y umbrales los aplica tu software de declaración o tu asesor.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: EN_LABELS,
 });
 
-// ── LatAm (Spanish labels) ──────────────────────────────────────────────────
 register({
   code: "MX", name: "México", flag: "🇲🇽", fiat: "MXN", locale: "es-MX",
   method: "FIFO",
-  methodNote: "FIFO por defecto. El método y tratamiento dependen de tu situación; confírmalo con tu asesor.",
+  methodNote: {
+    es: "FIFO por defecto. El método y tratamiento dependen de tu situación; confírmalo con tu asesor.",
+    en: "FIFO by default. The method and treatment depend on your situation; confirm it with your advisor.",
+  },
   longTermThresholdDays: 0,
-  notes: [
-    "En México, las operaciones con criptoactivos pueden tener implicaciones fiscales según su naturaleza y tu situación.",
-    "Este informe muestra ganancias/pérdidas e ingresos, no la cuota: los tipos los aplica tu declaración o asesor.",
-    "Verifica el tratamiento vigente con el SAT y con un asesor fiscal.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_ES, labels: ES_LABELS,
+  notes: {
+    es: [
+      "En México, las operaciones con criptoactivos pueden tener implicaciones fiscales según su naturaleza y tu situación.",
+      "Este informe muestra ganancias/pérdidas e ingresos, no la cuota: los tipos los aplica tu declaración o asesor.",
+      "Verifica el tratamiento vigente con el SAT y con un asesor fiscal.",
+    ],
+    en: [
+      "In Mexico, transactions with crypto assets may have tax implications depending on their nature and your situation.",
+      "This report shows gains/losses and income, not the tax due: rates are applied by your tax return or advisor.",
+      "Verify the current treatment with the SAT and a tax advisor.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: ES_LABELS,
 });
+
 register({
   code: "AR", name: "Argentina", flag: "🇦🇷", fiat: "ARS", locale: "es-AR",
   method: "FIFO",
-  methodNote: "FIFO por defecto. Confirma el método aplicable con tu asesor.",
+  methodNote: {
+    es: "FIFO por defecto. Confirma el método aplicable con tu asesor.",
+    en: "FIFO by default. Confirm the applicable method with your advisor.",
+  },
   longTermThresholdDays: 0,
-  notes: [
-    "El tratamiento de criptoactivos en Argentina ha cambiado con el tiempo; verifica la normativa vigente (ARCA/AFIP).",
-    "Este informe no calcula la cuota ni aplica regímenes especiales; consúltalo con tu asesor.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_ES, labels: ES_LABELS,
+  notes: {
+    es: [
+      "El tratamiento de criptoactivos en Argentina ha cambiado con el tiempo; verifica la normativa vigente (ARCA/AFIP).",
+      "Este informe no calcula la cuota ni aplica regímenes especiales; consúltalo con tu asesor.",
+    ],
+    en: [
+      "The treatment of crypto assets in Argentina has changed over time; check the current rules (ARCA/AFIP).",
+      "This report does not compute the tax due or apply special regimes; consult your advisor.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: ES_LABELS,
 });
+
 register({
   code: "CO", name: "Colombia", flag: "🇨🇴", fiat: "COP", locale: "es-CO",
   method: "FIFO",
-  methodNote: "FIFO por defecto. Confirma el método aplicable con tu asesor.",
+  methodNote: {
+    es: "FIFO por defecto. Confirma el método aplicable con tu asesor.",
+    en: "FIFO by default. Confirm the applicable method with your advisor.",
+  },
   longTermThresholdDays: 0,
-  notes: [
-    "Verifica el tratamiento vigente de criptoactivos con la DIAN y con un asesor fiscal.",
-    "Este informe muestra ganancias/pérdidas e ingresos, no la cuota a pagar.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_ES, labels: ES_LABELS,
+  notes: {
+    es: [
+      "Verifica el tratamiento vigente de criptoactivos con la DIAN y con un asesor fiscal.",
+      "Este informe muestra ganancias/pérdidas e ingresos, no la cuota a pagar.",
+    ],
+    en: [
+      "Verify the current treatment of crypto assets with the DIAN and a tax advisor.",
+      "This report shows gains/losses and income, not the tax due.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: ES_LABELS,
 });
 
-// ── Europe / others (English labels) ────────────────────────────────────────
 register({
   code: "PT", name: "Portugal", flag: "🇵🇹", fiat: "EUR", locale: "en-GB",
   method: "FIFO",
-  methodNote: "FIFO by default. Confirm the method that applies to your case.",
+  methodNote: {
+    en: "FIFO by default. Confirm the method that applies to your case.",
+    es: "FIFO por defecto. Confirma el método que aplica a tu caso.",
+  },
   longTermThresholdDays: 0,
-  notes: [
-    "In Portugal, gains on crypto held over 365 days may be treated differently from short-term gains; this report does not apply that distinction automatically.",
-    "Confirm current rules and any exemptions with your advisor.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_EN, labels: EN_LABELS,
-});
-register({
-  code: "DE", name: "Germany", flag: "🇩🇪", fiat: "EUR", locale: "en-GB",
-  method: "FIFO",
-  methodNote: "FIFO is commonly used in Germany. Confirm with your advisor.",
-  longTermThresholdDays: 0,
-  notes: [
-    "In Germany, gains on crypto held for more than one year may be tax-exempt; this report does NOT apply that exemption — review holding periods with your advisor.",
-    "This report shows figures, not tax owed.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_EN, labels: EN_LABELS,
-});
-register({
-  code: "GB", name: "United Kingdom", flag: "🇬🇧", fiat: "GBP", locale: "en-GB",
-  method: "ACB",
-  methodNote: "The UK uses share pooling (average cost). This report approximates it with ACB.",
-  longTermThresholdDays: 0,
-  notes: [
-    "UK rules include same-day and 30-day 'bed and breakfasting' matching that this report does NOT implement; the ACB figure is an approximation.",
-    "Confirm your Capital Gains position and allowances with your advisor or HMRC guidance.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_EN, labels: EN_LABELS,
-});
-register({
-  code: "CA", name: "Canada", flag: "🇨🇦", fiat: "CAD", locale: "en-CA",
-  method: "ACB",
-  methodNote: "Canada uses the adjusted cost base (average cost) method.",
-  longTermThresholdDays: 0,
-  notes: [
-    "Superficial-loss rules may apply and are not implemented here; confirm with your advisor.",
-    "Only 50% of capital gains are generally taxable in Canada; this report shows the full gain, not the taxable portion.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_EN, labels: EN_LABELS,
+  notes: {
+    en: [
+      "In Portugal, gains on crypto held over 365 days may be treated differently from short-term gains; this report does not apply that distinction automatically.",
+      "Confirm current rules and any exemptions with your advisor.",
+    ],
+    es: [
+      "En Portugal, las ganancias por criptoactivos mantenidos más de 365 días pueden tener un tratamiento distinto al de las de corto plazo; este informe no aplica esa distinción automáticamente.",
+      "Confirma las reglas vigentes y cualquier exención con tu asesor.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: EN_LABELS,
 });
 
 register({
-  code: "INT",
-  name: "International (generic)",
-  flag: "🌐",
-  fiat: "USD",
-  locale: "en-US",
+  code: "DE", name: "Germany", flag: "🇩🇪", fiat: "EUR", locale: "en-GB",
   method: "FIFO",
-  methodNote: "FIFO by default. Confirm the method required by your jurisdiction.",
+  methodNote: {
+    en: "FIFO is commonly used in Germany. Confirm with your advisor.",
+    es: "En Alemania se usa comúnmente FIFO. Confírmalo con tu asesor.",
+  },
   longTermThresholdDays: 0,
-  notes: [
-    "This is a generic profile. Cost-basis method, fiscal year, currency and reward treatment vary by country.",
-    "Select or create a profile matching your jurisdiction, and confirm everything with a local advisor.",
-  ],
-  disclaimer: COMMON_DISCLAIMER_EN,
-  labels: EN_LABELS,
+  notes: {
+    en: [
+      "In Germany, gains on crypto held for more than one year may be tax-exempt; this report does NOT apply that exemption — review holding periods with your advisor.",
+      "This report shows figures, not tax owed.",
+    ],
+    es: [
+      "En Alemania, las ganancias por criptoactivos mantenidos más de un año pueden estar exentas; este informe NO aplica esa exención: revisa los periodos de tenencia con tu asesor.",
+      "Este informe muestra cifras, no la cuota a pagar.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: EN_LABELS,
+});
+
+register({
+  code: "GB", name: "United Kingdom", flag: "🇬🇧", fiat: "GBP", locale: "en-GB",
+  method: "ACB",
+  methodNote: {
+    en: "The UK uses share pooling (average cost). This report approximates it with ACB.",
+    es: "El Reino Unido usa 'share pooling' (coste medio). Este informe lo aproxima con ACB.",
+  },
+  longTermThresholdDays: 0,
+  notes: {
+    en: [
+      "UK rules include same-day and 30-day 'bed and breakfasting' matching that this report does NOT implement; the ACB figure is an approximation.",
+      "Confirm your Capital Gains position and allowances with your advisor or HMRC guidance.",
+    ],
+    es: [
+      "Las reglas del Reino Unido incluyen emparejamientos 'same-day' y de 30 días ('bed and breakfasting') que este informe NO implementa; la cifra ACB es una aproximación.",
+      "Confirma tu posición de ganancias de capital y las desgravaciones con tu asesor o la guía de HMRC.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: EN_LABELS,
+});
+
+register({
+  code: "CA", name: "Canada", flag: "🇨🇦", fiat: "CAD", locale: "en-CA",
+  method: "ACB",
+  methodNote: {
+    en: "Canada uses the adjusted cost base (average cost) method.",
+    es: "Canadá usa el método de coste base ajustado (ACB, coste medio).",
+  },
+  longTermThresholdDays: 0,
+  notes: {
+    en: [
+      "Superficial-loss rules may apply and are not implemented here; confirm with your advisor.",
+      "Only 50% of capital gains are generally taxable in Canada; this report shows the full gain, not the taxable portion.",
+    ],
+    es: [
+      "Pueden aplicarse las reglas de 'superficial loss', que aquí no se implementan; confírmalo con tu asesor.",
+      "En Canadá, por lo general solo el 50% de las ganancias de capital tributa; este informe muestra la ganancia completa, no la porción gravable.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: EN_LABELS,
+});
+
+register({
+  code: "INT", name: "International (generic)", flag: "🌐", fiat: "USD", locale: "en-US",
+  method: "FIFO",
+  methodNote: {
+    en: "FIFO by default. Confirm the method required by your jurisdiction.",
+    es: "FIFO por defecto. Confirma el método que exige tu jurisdicción.",
+  },
+  longTermThresholdDays: 0,
+  notes: {
+    en: [
+      "This is a generic profile. Cost-basis method, fiscal year, currency and reward treatment vary by country.",
+      "Select or create a profile matching your jurisdiction, and confirm everything with a local advisor.",
+    ],
+    es: [
+      "Este es un perfil genérico. El método de coste, el año fiscal, la moneda y el tratamiento de recompensas varían según el país.",
+      "Selecciona o crea un perfil acorde a tu jurisdicción y confírmalo todo con un asesor local.",
+    ],
+  },
+  disclaimer: DISCLAIMER, labels: EN_LABELS,
 });
 
 /** Report structural labels by UI language (decoupled from the jurisdiction). */
 export function getReportLabels(lang: string): JurisdictionLabels {
-  return lang?.toLowerCase().startsWith("es") ? ES_LABELS : EN_LABELS;
+  return isEs(lang) ? ES_LABELS : EN_LABELS;
 }
 
 /** The "not tax advice" disclaimer in the UI language. */
 export function getReportDisclaimer(lang: string): string {
-  return lang?.toLowerCase().startsWith("es") ? COMMON_DISCLAIMER_ES : COMMON_DISCLAIMER_EN;
+  return pickText(DISCLAIMER, lang);
+}
+
+/** Method note + jurisdiction notes, resolved to the given UI language. */
+export function getJurisdictionNotes(j: Jurisdiction, lang: string): { methodNote: string; notes: string[] } {
+  return { methodNote: pickText(j.methodNote, lang), notes: pickList(j.notes, lang) };
 }
 
 export function getJurisdiction(code: string): Jurisdiction {
@@ -304,9 +393,5 @@ export function getJurisdictionOptions(): Array<{ code: string; name: string; fl
 
 /** Derive the engine config implied by a jurisdiction (method, fiat, term split). */
 export function engineConfigFor(j: Jurisdiction): Partial<EngineConfig> {
-  return {
-    method: j.method,
-    fiat: j.fiat,
-    longTermThresholdDays: j.longTermThresholdDays,
-  };
+  return { method: j.method, fiat: j.fiat, longTermThresholdDays: j.longTermThresholdDays };
 }

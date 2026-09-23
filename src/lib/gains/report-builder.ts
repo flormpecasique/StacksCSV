@@ -9,6 +9,7 @@
 import { summarize } from "./report";
 import type { RealizedGainsResult } from "./types";
 import type { Jurisdiction, JurisdictionLabels } from "./jurisdictions";
+import { getReportLabels, getReportDisclaimer, getJurisdictionNotes } from "./jurisdictions";
 
 export interface ReportTable {
   columns: string[];
@@ -46,9 +47,11 @@ export interface BuildOptions {
   errors?: Array<{ txid: string; reason: string }>;
   /** Override the period label (defaults to min–max year found in the data). */
   periodLabel?: string;
-  /** Override the structural labels (e.g. to follow the UI language, not the country). */
+  /** UI language ("es"/"en"); drives labels, disclaimer AND jurisdiction notes so the whole report is one language. */
+  lang?: string;
+  /** Override the structural labels (takes precedence over `lang`). */
   labels?: JurisdictionLabels;
-  /** Override the disclaimer text (e.g. to follow the UI language). */
+  /** Override the disclaimer text (takes precedence over `lang`). */
   disclaimer?: string;
 }
 
@@ -81,7 +84,8 @@ export function buildTaxReport(
   jurisdiction: Jurisdiction,
   options: BuildOptions = {},
 ): TaxReportDoc {
-  const L = options.labels ?? jurisdiction.labels;
+  const lang = options.lang;
+  const L = options.labels ?? (lang !== undefined ? getReportLabels(lang) : jurisdiction.labels);
   const money = moneyFmt(jurisdiction.locale, jurisdiction.fiat);
   const fmtDate = dateFmt(jurisdiction.locale);
   const showTerm = jurisdiction.longTermThresholdDays > 0;
@@ -199,6 +203,12 @@ export function buildTaxReport(
   if (noPrice.size) review.push({ title: L.reviewNoPrice, help: L.reviewNoPriceHelp, items: [...noPrice] });
   if (other.size) review.push({ title: L.reviewOther, items: [...other] });
 
+  // Notes + disclaimer follow the UI language too (falling back to the
+  // jurisdiction's own locale when no lang is given), so the report is never
+  // half in one language and half in another.
+  const noteLang = lang ?? (jurisdiction.locale.toLowerCase().startsWith("es") ? "es" : "en");
+  const { methodNote, notes: jNotes } = getJurisdictionNotes(jurisdiction, noteLang);
+
   return {
     labels: L,
     header: { title: L.reportTitle, subtitle: L.subtitle, fields: headerFields },
@@ -208,7 +218,7 @@ export function buildTaxReport(
     disposals,
     income,
     review,
-    notes: [jurisdiction.methodNote, ...jurisdiction.notes],
-    disclaimer: options.disclaimer ?? jurisdiction.disclaimer,
+    notes: [methodNote, ...jNotes],
+    disclaimer: options.disclaimer ?? (lang !== undefined ? getReportDisclaimer(lang) : getReportDisclaimer(noteLang)),
   };
 }
