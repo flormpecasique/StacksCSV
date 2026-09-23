@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isRateLimited, clientIp } from "@/lib/ratelimit";
 
 /**
  * /api/price — server-side CoinGecko proxy.
  *
  * The client sends coin ids + a UNIX-second range; we fetch one market_chart
- * range per id (a handful of calls instead of one-per-day) and return the daily
- * price series. Running server-side avoids browser CORS and rate limits, keeps
- * any API key off the client, and lets us cache across users.
+ * range per id and return the daily price series. Running server-side avoids
+ * browser CORS and rate limits, keeps any API key off the client, and lets us
+ * cache across users.
  *
  * SECURITY:
- *  - ids are validated against a strict charset and count cap, then
- *    encodeURIComponent'd; the host is pinned. No SSRF.
+ *  - ids validated against a strict charset + count cap, then encodeURIComponent'd;
+ *    host is pinned. No SSRF.
  *  - Never receives or logs a wallet address — only coin ids + a date range.
  *  - Optional COINGECKO_API_KEY (a free "demo" key) is read from the server env
- *    and sent as a header; it is never exposed to the client.
+ *    and sent as a header; never exposed to the client.
+ *  - Distributed rate limit shared across serverless instances (see lib/ratelimit).
  */
 
 const CG_BASE = "https://api.coingecko.com/api/v3";
@@ -26,20 +28,8 @@ type Series = Array<[number, number]>;
 const cache = new Map<string, { series: Series; ts: number }>();
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6h — historical prices don't change
 
-// Light per-IP rate limit (best-effort, per serverless instance).
-const hits = new Map<string, { count: number; resetAt: number }>();
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const e = hits.get(ip);
-  if (!e || now > e.resetAt) { hits.set(ip, { count: 1, resetAt: now + 60_000 }); return false; }
-  e.count += 1;
-  return e.count > 60;
-}
-
 export async function GET(req: NextRequest) {
-  if (hits.size > 10_000) hits.clear();
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (rateLimited(ip)) {
+  if (await isRateLimited(clientIp(req), { name: "price", max: 60, windowSec: 60 })) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -84,8 +74,7 @@ export async function GET(req: NextRequest) {
           },
         });
         if (!res.ok) {
-          // Leave this id out; the client marks its assets as "to review".
-          prices[id] = [];
+          prices[id] = []; // leave out; client marks its assets "to review"
           return;
         }
         const data = (await res.json()) as { prices?: Series };
