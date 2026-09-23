@@ -32,6 +32,13 @@ export interface JurisdictionLabels {
   income: string;
   review: string;
   reviewEmpty: string;
+  reviewMissingBasis: string;
+  reviewMissingBasisHelp: string;
+  reviewUnknownAsset: string;
+  reviewUnknownAssetHelp: string;
+  reviewNoPrice: string;
+  reviewNoPriceHelp: string;
+  reviewOther: string;
   notesTitle: string;
   disclaimerTitle: string;
   colYear: string;
@@ -75,6 +82,13 @@ const ES_LABELS: JurisdictionLabels = {
   byYear: "Por ejercicio", byAsset: "Por activo", disposals: "Detalle de transmisiones",
   income: "Ingresos por recompensas/Staking", review: "Elementos a revisar",
   reviewEmpty: "No hay elementos marcados para revisión.",
+  reviewMissingBasis: "Coste de adquisición faltante",
+  reviewMissingBasisHelp: "Ventas sin compra previa registrada en este periodo (coste asumido = 0). Incluye tu historial anterior o revísalo con tu asesor: la ganancia puede estar sobreestimada.",
+  reviewUnknownAsset: "Activos no reconocidos",
+  reviewUnknownAssetHelp: "Tokens sin fuente de precio; sus operaciones se excluyeron del cálculo para no introducir cifras erróneas.",
+  reviewNoPrice: "Sin precio en la fecha",
+  reviewNoPriceHelp: "El token está reconocido, pero no había precio de mercado en esa fecha (normalmente por ser muy reciente).",
+  reviewOther: "Otros",
   notesTitle: "Notas de la jurisdicción", disclaimerTitle: "Aviso legal",
   colYear: "Ejercicio", colDate: "Fecha", colAsset: "Activo", colQty: "Cantidad",
   colProceeds: "Transmisión", colCost: "Adquisición", colGain: "Ganancia/pérdida",
@@ -93,6 +107,13 @@ const EN_LABELS: JurisdictionLabels = {
   byYear: "By tax year", byAsset: "By asset", disposals: "Disposals detail",
   income: "Income from rewards/Staking", review: "Items to review",
   reviewEmpty: "No items flagged for review.",
+  reviewMissingBasis: "Missing cost basis",
+  reviewMissingBasisHelp: "Disposals with no recorded acquisition in this period (cost treated as 0). Include your earlier history or review with your advisor: the gain may be overstated.",
+  reviewUnknownAsset: "Unrecognized assets",
+  reviewUnknownAssetHelp: "Tokens with no price source; their transactions were excluded from the calculation to avoid introducing wrong figures.",
+  reviewNoPrice: "No price on that date",
+  reviewNoPriceHelp: "The token is recognized, but there was no market price on that date (usually because it is very recent).",
+  reviewOther: "Other",
   notesTitle: "Jurisdiction notes", disclaimerTitle: "Disclaimer",
   colYear: "Year", colDate: "Date", colAsset: "Asset", colQty: "Quantity",
   colProceeds: "Proceeds", colCost: "Cost", colGain: "Gain/Loss",

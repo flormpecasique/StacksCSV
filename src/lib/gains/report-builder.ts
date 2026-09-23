@@ -15,6 +15,13 @@ export interface ReportTable {
   rows: string[][];
 }
 
+/** A grouped, de-duplicated block of items that need the user's attention. */
+export interface ReviewGroup {
+  title: string;
+  help?: string;
+  items: string[];
+}
+
 export interface TaxReportDoc {
   labels: JurisdictionLabels;
   header: {
@@ -27,7 +34,7 @@ export interface TaxReportDoc {
   byAsset: ReportTable;
   disposals: ReportTable;
   income: ReportTable | null;
-  review: string[];
+  review: ReviewGroup[];
   notes: string[];
   disclaimer: string;
 }
@@ -165,11 +172,32 @@ export function buildTaxReport(
       }
     : null;
 
-  // Review section: engine warnings (deduped) + pricing errors.
-  const review: string[] = [];
-  const seen = new Set<string>();
-  for (const w of result.warnings) if (!seen.has(w)) { seen.add(w); review.push(w); }
-  for (const e of options.errors ?? []) review.push(`${e.txid}: ${e.reason}`);
+  // Review section: classify + de-duplicate the warnings and pricing errors into
+  // a few clean groups, instead of one long repetitive list.
+  const missingBasis = new Set<string>();
+  const unknownAssets = new Set<string>();
+  const noPrice = new Set<string>();
+  const other = new Set<string>();
+
+  for (const w of result.warnings) {
+    const m = /Missing cost basis for (.+?) —/.exec(w);
+    if (m) missingBasis.add(m[1].trim());
+    else other.add(w);
+  }
+  for (const e of options.errors ?? []) {
+    const reason = e.reason;
+    const unknown = /Unknown asset "([^"]+)"/.exec(reason);
+    const nop = /No price for (\S+) on (\S+)/.exec(reason);
+    if (unknown) unknownAssets.add(unknown[1]);
+    else if (nop) noPrice.add(`${nop[1]} — ${nop[2]}`);
+    else other.add(reason);
+  }
+
+  const review: ReviewGroup[] = [];
+  if (missingBasis.size) review.push({ title: L.reviewMissingBasis, help: L.reviewMissingBasisHelp, items: [...missingBasis] });
+  if (unknownAssets.size) review.push({ title: L.reviewUnknownAsset, help: L.reviewUnknownAssetHelp, items: [...unknownAssets] });
+  if (noPrice.size) review.push({ title: L.reviewNoPrice, help: L.reviewNoPriceHelp, items: [...noPrice] });
+  if (other.size) review.push({ title: L.reviewOther, items: [...other] });
 
   return {
     labels: L,

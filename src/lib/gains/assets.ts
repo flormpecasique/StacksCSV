@@ -55,6 +55,10 @@ register({ id: "sUSDT", symbol: "sUSDT", decimals: 6, coingeckoId: "tether" }); 
 register({ id: "stSTX", symbol: "stSTX", decimals: 6, coingeckoId: "stacking-dao" });   // verified: coingecko "ID de la API: stacking-dao"
 register({ id: "USDH", symbol: "USDH", decimals: 8, coingeckoId: "hermetica-usdh" });   // verified: coingecko "ID de la API: hermetica-usdh" (fluctúa, no asumir $1)
 register({ id: "sUSDH", symbol: "sUSDH", decimals: 8, coingeckoId: null });
+register({ id: "LEO", symbol: "LEO", decimals: 6, coingeckoId: "leopold" }); // verified: coingecko "ID de la API: leopold" (Stacks leo-token; NOT the slug "leo-2")
+// Recognized but no CoinGecko price feed yet → flagged "to review", never mis-priced.
+register({ id: "stSTXbtc", symbol: "stSTXbtc", decimals: 8, coingeckoId: null });  // CoinGecko preview only (no price data yet)
+register({ id: "zstSTXbtc", symbol: "zstSTXbtc", decimals: 8, coingeckoId: null }); // not listed on CoinGecko
 
 export function getAsset(id: string): AssetInfo | undefined {
   if (typeof id !== "string" || id.length === 0 || id.length > 64) return undefined;
