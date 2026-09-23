@@ -24,8 +24,6 @@ import {
   generateTaxReportPdf,
   getJurisdiction,
   getJurisdictionOptions,
-  getReportLabels,
-  getReportDisclaimer,
   engineConfigFor,
   createPrefetchedProvider,
 } from "@/lib/gains";
@@ -133,8 +131,7 @@ export default function Home() {
       const doc = buildTaxReport(result, jurisdiction, {
         errors,
         wallet: state.resolvedFrom ?? state.address,
-        labels: getReportLabels(lang),
-        disclaimer: getReportDisclaimer(lang),
+        lang,
       });
       const blob = await generateTaxReportPdf(doc);
       const url = URL.createObjectURL(blob);
