@@ -366,6 +366,15 @@ export function getReportLabels(lang: string): JurisdictionLabels {
   return isEs(lang) ? ES_LABELS : EN_LABELS;
 }
 
+/**
+ * Infer the language ("es"/"en") of a labels object. Used so the jurisdiction
+ * notes ALWAYS match the report's structural language, even if a caller passes
+ * `labels` without an explicit `lang` — the report can never end up half-and-half.
+ */
+export function getLangForLabels(labels: JurisdictionLabels): string {
+  return labels === ES_LABELS ? "es" : "en";
+}
+
 /** The "not tax advice" disclaimer in the UI language. */
 export function getReportDisclaimer(lang: string): string {
   return pickText(DISCLAIMER, lang);

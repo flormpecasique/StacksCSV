@@ -9,7 +9,7 @@
 import { summarize } from "./report";
 import type { RealizedGainsResult } from "./types";
 import type { Jurisdiction, JurisdictionLabels } from "./jurisdictions";
-import { getReportLabels, getReportDisclaimer, getJurisdictionNotes } from "./jurisdictions";
+import { getReportLabels, getReportDisclaimer, getJurisdictionNotes, getLangForLabels } from "./jurisdictions";
 
 export interface ReportTable {
   columns: string[];
@@ -203,10 +203,10 @@ export function buildTaxReport(
   if (noPrice.size) review.push({ title: L.reviewNoPrice, help: L.reviewNoPriceHelp, items: [...noPrice] });
   if (other.size) review.push({ title: L.reviewOther, items: [...other] });
 
-  // Notes + disclaimer follow the UI language too (falling back to the
-  // jurisdiction's own locale when no lang is given), so the report is never
-  // half in one language and half in another.
-  const noteLang = lang ?? (jurisdiction.locale.toLowerCase().startsWith("es") ? "es" : "en");
+  // Notes + disclaimer follow the SAME language as the structural labels (L),
+  // whether that came from `lang`, an explicit `labels` override, or the
+  // jurisdiction default — so the report is never half in one language.
+  const noteLang = lang ?? getLangForLabels(L);
   const { methodNote, notes: jNotes } = getJurisdictionNotes(jurisdiction, noteLang);
 
   return {
@@ -219,6 +219,6 @@ export function buildTaxReport(
     income,
     review,
     notes: [methodNote, ...jNotes],
-    disclaimer: options.disclaimer ?? (lang !== undefined ? getReportDisclaimer(lang) : getReportDisclaimer(noteLang)),
+    disclaimer: options.disclaimer ?? getReportDisclaimer(noteLang),
   };
 }
