@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@upstash/ratelimit": "^2.1.0",
+    "@upstash/redis": "^1.39.0",
     "decimal.js": "^10.6.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
