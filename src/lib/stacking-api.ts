@@ -17,6 +17,7 @@
  */
 
 import { createHash } from "crypto";
+import { hiroFetch } from "./hiro-fetch";
 import type { CsvRow } from "@/types";
 
 const HIRO_BASE = "https://api.hiro.so";
@@ -137,7 +138,7 @@ export async function getPoXBtcAddresses(stxAddress: string): Promise<string[]> 
   const found = new Set<string>();
 
   try {
-    const res = await fetch(
+    const res = await hiroFetch(
       `${HIRO_BASE}/extended/v2/addresses/${stxAddress}/stacking`,
       { headers: { Accept: "application/json" }, cache: "no-store" }
     );
@@ -185,7 +186,7 @@ export async function fetchBurnchainRewards(btcAddress: string): Promise<Burncha
   let offset  = 0;
 
   while (true) {
-    const res = await fetch(
+    const res = await hiroFetch(
       `${HIRO_BASE}/extended/v1/burnchain/rewards/${btcAddress}?limit=${LIMIT}&offset=${offset}`,
       { headers: { Accept: "application/json" }, cache: "no-store" }
     );
@@ -217,7 +218,7 @@ export async function getBurnBlockTime(height: number): Promise<string> {
   if (hit) return hit;
 
   try {
-    const res = await fetch(
+    const res = await hiroFetch(
       `${HIRO_BASE}/extended/v2/burn-blocks/${height}`,
       { headers: { Accept: "application/json" }, cache: "no-store" }
     );

@@ -14,6 +14,7 @@ import type {
   HiroTransactionsWithTransfersResponse,
   TokenMetadata,
 } from "@/types";
+import { hiroFetch } from "./hiro-fetch";
 
 const HIRO_BASE  = "https://api.hiro.so";
 const PAGE_LIMIT = 50;
@@ -86,7 +87,7 @@ async function fetchPage(
 ): Promise<HiroTransactionsWithTransfersResponse> {
   const url = `${HIRO_BASE}/extended/v1/address/${address}/transactions_with_transfers?limit=${PAGE_LIMIT}&offset=${offset}`;
 
-  const res = await fetch(url, {
+  const res = await hiroFetch(url, {
     headers: { Accept: "application/json" },
     cache:   "no-store",
   });
@@ -153,7 +154,7 @@ export async function getTokenMetadata(assetId: string): Promise<TokenMetadata> 
 
     // Hiro Token Metadata API
     const url = `${HIRO_BASE}/metadata/v1/ft/${encodeURIComponent(contractId)}`;
-    const res = await fetch(url, {
+    const res = await hiroFetch(url, {
       headers: { Accept: "application/json" },
       cache:   "no-store",
     });
@@ -202,7 +203,7 @@ export async function prefetchTokenMetadata(assetIds: string[]): Promise<void> {
  */
 export async function resolveBnsName(name: string): Promise<string> {
   const url = `${HIRO_BASE}/v1/names/${encodeURIComponent(name.toLowerCase())}`;
-  const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+  const res = await hiroFetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
 
   if (res.status === 404) {
     throw new Error(`BNS name "${name}" not found. Check the spelling and try again.`);
