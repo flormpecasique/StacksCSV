@@ -1,16 +1,13 @@
 /**
  * ratelimit.ts
  *
- * Distributed rate limiting for the API routes.
+ * Distributed rate limiting for the API routes, designed to be FAIL-OPEN:
+ * rate limiting must never be able to take down the endpoint it protects.
  *
  * If UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set (in Vercel env),
- * limits are enforced GLOBALLY across all serverless instances via Upstash Redis
- * — so an attacker can't bypass them by hitting many instances at once.
- *
- * If Upstash is NOT configured (local dev, or before you set it up), it falls
- * back to a per-instance in-memory limiter, so the app always works. If Upstash
- * is configured but momentarily errors, it also falls back — never blocking real
- * users because of a Redis hiccup.
+ * limits are enforced GLOBALLY across all serverless instances via Upstash Redis.
+ * If Upstash is not configured, is slow, hangs, or errors, we fall back to a
+ * per-instance in-memory limiter (and never block the request on infra trouble).
  *
  * Secrets live only in environment variables, never in the repo.
  */
@@ -25,6 +22,10 @@ export interface RateCfg {
   /** Window length in seconds. */
   windowSec: number;
 }
+
+// Hard cap on the Upstash round-trip so a slow/unreachable Redis can NEVER hang
+// the request (which would time out the whole serverless function).
+const UPSTASH_TIMEOUT_MS = 1500;
 
 // ── In-memory fallback (best-effort, per serverless instance) ─────────────────
 const memHits = new Map<string, { count: number; resetAt: number }>();
@@ -63,20 +64,41 @@ function upstashFor(cfg: RateCfg): Ratelimit | null {
   }
 }
 
+/**
+ * Race a limit() call against a timeout. On timeout we resolve as "allowed"
+ * (success: true) so a hanging Redis call can never block the request.
+ * Exported for testing.
+ */
+export async function raceLimit(
+  limitCall: Promise<{ success: boolean }>,
+  timeoutMs: number,
+): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<{ success: boolean }>((resolve) => {
+    timer = setTimeout(() => resolve({ success: true }), timeoutMs);
+  });
+  try {
+    const res = await Promise.race([limitCall, timeout]);
+    return !res.success;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** Returns true if the request should be BLOCKED (over the limit). */
 export async function isRateLimited(identifier: string, cfg: RateCfg): Promise<boolean> {
   const key = `${cfg.name}:${identifier}`;
-  const rl = upstashFor(cfg);
-  if (rl) {
-    try {
-      const { success } = await rl.limit(key);
-      return !success;
-    } catch {
-      // Redis unavailable → fall back so the app stays protected AND functional.
-      return memLimited(key, cfg.max, cfg.windowSec * 1000);
+  try {
+    const rl = upstashFor(cfg);
+    if (rl) {
+      // rl.limit resolves { success, ... }; race it against the timeout.
+      return await raceLimit(rl.limit(key), UPSTASH_TIMEOUT_MS);
     }
+    return memLimited(key, cfg.max, cfg.windowSec * 1000);
+  } catch {
+    // Rate limiting must NEVER take down the endpoint → fall back on any error.
+    return memLimited(key, cfg.max, cfg.windowSec * 1000);
   }
-  return memLimited(key, cfg.max, cfg.windowSec * 1000);
 }
 
 /** Best-effort client IP from the standard proxy headers (Vercel sets these). */
