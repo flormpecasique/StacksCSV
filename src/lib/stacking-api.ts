@@ -1,39 +1,18 @@
 /**
  * stacking-api.ts
  *
- * Fetches and transforms Proof-of-Transfer (PoX) stacking rewards
- * for a Stacks wallet address.
- *
- * FLOW:
- *   1. Get the user's PoX BTC reward address via the stacking API
- *   2. Fetch all BTC reward payments to that address (burnchain rewards)
- *   3. Resolve ISO timestamps from Bitcoin block heights
- *   4. Return as CsvRow[] ready for tax export
- *
- * TAX TREATMENT:
- *   Stacking rewards = BTC income received
- *   Each reward cycle payment = one row in the CSV
- *   Amount in BTC (satoshis ÷ 100_000_000)
+ * Fetches and transforms Proof-of-Transfer (PoX) stacking rewards.
+ * All Hiro API calls go through hiroFetch() in hiro-api.ts, which injects
+ * the HIRO_API_KEY header automatically.
  */
 
 import { createHash } from "crypto";
-import { hiroFetch } from "./hiro-fetch";
 import type { CsvRow } from "@/types";
+import { hiroFetch } from "@/lib/hiro-api";
 
 const HIRO_BASE = "https://api.hiro.so";
 
 // ─── Bitcoin address encoding ─────────────────────────────────────────────────
-//
-// The Hiro API returns PoX addresses as raw bytes:
-//   { version: "0x00", hashbytes: "0xdeadbeef..." }
-//
-// We convert these to human-readable Bitcoin address strings.
-// The version byte maps to Bitcoin address types:
-//   0x00 → P2PKH   (base58check, starts with "1")
-//   0x01 → P2SH    (base58check, starts with "3")
-//   0x04 → P2WPKH  (bech32, starts with "bc1q", 20-byte program)
-//   0x06 → P2WSH   (bech32, starts with "bc1q", 32-byte program)
-//   0x07 → P2TR    (bech32m, starts with "bc1p", taproot)
 
 const B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const BECH32_CHARS = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
@@ -55,8 +34,6 @@ function base58Check(payload: Buffer): string {
   const checksum = sha256(sha256(payload)).slice(0, 4);
   return base58Encode(Buffer.concat([payload, checksum]));
 }
-
-// Bech32/bech32m encoder ──────────────────────────────────────────────────────
 
 function b32Polymod(values: number[]): number {
   let c = 1;
@@ -102,58 +79,48 @@ function bech32Address(witnessVersion: number, witnessProgram: Buffer): string {
     .join("");
 }
 
-/**
- * Converts a Stacks PoX address object to a Bitcoin address string.
- * Returns null for unknown version bytes.
- */
 export function poxToBitcoinAddress(version: string, hashbytes: string): string | null {
   try {
     const ver  = parseInt(version.replace("0x", ""), 16);
     const hash = Buffer.from(hashbytes.replace("0x", ""), "hex");
 
     switch (ver) {
-      case 0x00: return base58Check(Buffer.concat([Buffer.from([0x00]), hash])); // P2PKH
-      case 0x01: return base58Check(Buffer.concat([Buffer.from([0x05]), hash])); // P2SH
-      case 0x04: return bech32Address(0, hash);   // P2WPKH  (20 bytes)
-      case 0x05: return base58Check(Buffer.concat([Buffer.from([0x05]), hash])); // P2WPKH-P2SH
-      case 0x06: return bech32Address(0, hash);   // P2WSH   (32 bytes)
-      case 0x07: return bech32Address(1, hash);   // P2TR    taproot
+      case 0x00: return base58Check(Buffer.concat([Buffer.from([0x00]), hash]));
+      case 0x01: return base58Check(Buffer.concat([Buffer.from([0x05]), hash]));
+      case 0x04: return bech32Address(0, hash);
+      case 0x05: return base58Check(Buffer.concat([Buffer.from([0x05]), hash]));
+      case 0x06: return bech32Address(0, hash);
+      case 0x07: return bech32Address(1, hash);
       default:   return null;
     }
   } catch { return null; }
 }
 
-// ─── Stacking address lookup ──────────────────────────────────────────────────
+// ─── Stacking address lookup ─────────────────────────────────────────────────
 
 interface PoXAddressObj {
   version:   string;
   hashbytes: string;
 }
 
-/**
- * Returns the set of Bitcoin PoX reward addresses registered for a Stacks address.
- * Uses the v2 stacking endpoint (current state).
- */
 export async function getPoXBtcAddresses(stxAddress: string): Promise<string[]> {
   const found = new Set<string>();
 
   try {
+    // Authenticated via hiroFetch — same API key as everywhere else
     const res = await hiroFetch(
-      `${HIRO_BASE}/extended/v2/addresses/${stxAddress}/stacking`,
-      { headers: { Accept: "application/json" }, cache: "no-store" }
+      `${HIRO_BASE}/extended/v2/addresses/${stxAddress}/stacking`
     );
 
     if (res.ok) {
       const data = await res.json();
 
-      // Current stacking entry
       const pox: PoXAddressObj | undefined = data?.stacking?.pox_address ?? data?.pox_address;
       if (pox?.version && pox?.hashbytes) {
         const addr = poxToBitcoinAddress(pox.version, pox.hashbytes);
         if (addr) found.add(addr);
       }
 
-      // Historical cycle entries (if available in v2 response)
       const cycles: Array<{ pox_address?: PoXAddressObj }> = data?.cycles ?? [];
       for (const cycle of cycles) {
         if (cycle.pox_address?.version && cycle.pox_address?.hashbytes) {
@@ -167,19 +134,16 @@ export async function getPoXBtcAddresses(stxAddress: string): Promise<string[]> 
   return [...found];
 }
 
-// ─── Burnchain (Bitcoin) rewards ──────────────────────────────────────────────
+// ─── Burnchain rewards ───────────────────────────────────────────────────────
 
 export interface BurnchainReward {
   burn_block_hash:   string;
   burn_block_height: number;
-  reward_recipient:  string;   // BTC address that received the reward
-  reward_amount:     string;   // satoshis (string)
+  reward_recipient:  string;
+  reward_amount:     string;
   reward_index:      number;
 }
 
-/**
- * Fetches ALL burnchain rewards paid to a Bitcoin address (paginated).
- */
 export async function fetchBurnchainRewards(btcAddress: string): Promise<BurnchainReward[]> {
   const all: BurnchainReward[] = [];
   const LIMIT = 50;
@@ -187,8 +151,7 @@ export async function fetchBurnchainRewards(btcAddress: string): Promise<Burncha
 
   while (true) {
     const res = await hiroFetch(
-      `${HIRO_BASE}/extended/v1/burnchain/rewards/${btcAddress}?limit=${LIMIT}&offset=${offset}`,
-      { headers: { Accept: "application/json" }, cache: "no-store" }
+      `${HIRO_BASE}/extended/v1/burnchain/rewards/${btcAddress}?limit=${LIMIT}&offset=${offset}`
     );
     if (!res.ok) break;
 
@@ -198,33 +161,24 @@ export async function fetchBurnchainRewards(btcAddress: string): Promise<Burncha
 
     all.push(...results);
     offset += LIMIT;
-    if (results.length < LIMIT) break; // last page
+    if (results.length < LIMIT) break;
   }
 
   return all;
 }
 
-// ─── Burn block timestamps ────────────────────────────────────────────────────
+// ─── Burn block timestamps ───────────────────────────────────────────────────
 
-// Cache: block height → ISO timestamp (never changes once confirmed)
 const blockTimeCache = new Map<number, string>();
 
-/**
- * Returns the ISO UTC timestamp for a Bitcoin block height.
- * Results are cached indefinitely (block times are immutable).
- */
 export async function getBurnBlockTime(height: number): Promise<string> {
   const hit = blockTimeCache.get(height);
   if (hit) return hit;
 
   try {
-    const res = await hiroFetch(
-      `${HIRO_BASE}/extended/v2/burn-blocks/${height}`,
-      { headers: { Accept: "application/json" }, cache: "no-store" }
-    );
+    const res = await hiroFetch(`${HIRO_BASE}/extended/v2/burn-blocks/${height}`);
     if (res.ok) {
       const data = await res.json();
-      // burn_block_time_iso preferred; fallback to unix conversion
       const ts = data.burn_block_time_iso
         ?? (data.burn_block_time
           ? new Date(data.burn_block_time * 1000).toISOString()
@@ -233,9 +187,8 @@ export async function getBurnBlockTime(height: number): Promise<string> {
     }
   } catch { /* silent */ }
 
-  // Last-resort fallback: rough estimate (Bitcoin genesis + avg block time)
   const GENESIS_MS = 1_231_006_505_000;
-  const AVG_BLOCK   = 10 * 60 * 1000; // ~10 min
+  const AVG_BLOCK  = 10 * 60 * 1000;
   const ts = new Date(GENESIS_MS + height * AVG_BLOCK).toISOString();
   blockTimeCache.set(height, ts);
   return ts;
@@ -243,25 +196,16 @@ export async function getBurnBlockTime(height: number): Promise<string> {
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-/**
- * Fetches and transforms PoX stacking rewards for a Stacks address.
- *
- * Returns CsvRow[] where each row represents one BTC reward payment.
- * These rows are merged into the main CSV alongside STX and FT transfers.
- */
 export async function fetchStackingRewardRows(stxAddress: string): Promise<CsvRow[]> {
-  // 1. Find PoX BTC reward address(es)
   const btcAddresses = await getPoXBtcAddresses(stxAddress);
   if (btcAddresses.length === 0) return [];
 
   const allRows: CsvRow[] = [];
 
   for (const btcAddr of btcAddresses) {
-    // 2. Fetch all BTC rewards for this address
     const rewards = await fetchBurnchainRewards(btcAddr);
     if (rewards.length === 0) continue;
 
-    // 3. Pre-fetch all block timestamps in batches (5 at a time)
     const uniqueHeights = [...new Set(rewards.map(r => r.burn_block_height))];
     const BATCH = 5;
     for (let i = 0; i < uniqueHeights.length; i += BATCH) {
@@ -270,12 +214,10 @@ export async function fetchStackingRewardRows(stxAddress: string): Promise<CsvRo
       );
     }
 
-    // 4. Build CSV rows
     for (const reward of rewards) {
       const satoshis = parseInt(reward.reward_amount, 10);
       if (isNaN(satoshis) || satoshis <= 0) continue;
 
-      // Convert satoshis → BTC (8 decimals, strip trailing zeros)
       const btcAmount = (satoshis / 100_000_000)
         .toFixed(8)
         .replace(/\.?0+$/, "");
@@ -296,7 +238,6 @@ export async function fetchStackingRewardRows(stxAddress: string): Promise<CsvRo
     }
   }
 
-  // Sort newest-first
   allRows.sort((a, b) => (a.date > b.date ? -1 : 1));
   return allRows;
 }
