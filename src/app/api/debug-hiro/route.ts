@@ -1,76 +1,62 @@
 /**
- * TEMPORARY DEBUG ENDPOINT — delete after diagnosing the 403 issue.
+ * TEMPORARY DEBUG ENDPOINT v2 — test which BNS endpoint actually works now.
  *
- * Deploy this as: src/app/api/debug-hiro/route.ts
- * Then visit:     https://stackscsv.vercel.app/api/debug-hiro
+ * Deploy at: src/app/api/debug-hiro/route.ts (overwrite the previous one)
+ * Then visit: https://stackscsv.vercel.app/api/debug-hiro
  *
- * It tells you:
- *   1. Whether HIRO_API_KEY is loaded in the serverless function
- *   2. What Hiro returns when we call it WITH the key
- *   3. What Hiro returns when we call it WITHOUT any key
- *
- * SECURITY: This endpoint masks the key (shows only length + first/last chars).
- * Delete it as soon as you've diagnosed the problem.
+ * Tests multiple endpoints in parallel so we see which ones still live.
  */
 
 import { NextResponse } from "next/server";
 
 export async function GET() {
   const apiKey = process.env.HIRO_API_KEY;
+  const headers: HeadersInit = apiKey
+    ? { Accept: "application/json", "x-api-key": apiKey }
+    : { Accept: "application/json" };
 
-  // ─── 1. Check if the env var is loaded ────────────────────────────
-  const keyStatus = {
-    present:        !!apiKey,
-    length:         apiKey?.length ?? 0,
-    firstChars:     apiKey ? apiKey.slice(0, 4) : null,
-    lastChars:      apiKey ? apiKey.slice(-4) : null,
-    hasWhitespace:  apiKey ? /\s/.test(apiKey) : false,
-    hasQuotes:      apiKey ? /["']/.test(apiKey) : false,
-  };
+  // List of endpoints to probe. If one returns 200, that's our new URL.
+  const endpoints = [
+    // Legacy BNS v1 (likely dead)
+    "https://api.hiro.so/v1/names/flor.btc",
 
-  // ─── 2. Test the call WITH the API key ────────────────────────────
-  let withKey: Record<string, unknown>;
-  try {
-    const res = await fetch("https://api.hiro.so/v1/names/flor.btc", {
-      headers: apiKey
-        ? { Accept: "application/json", "x-api-key": apiKey }
-        : { Accept: "application/json" },
-      cache: "no-store",
-    });
-    const body = await res.text();
-    withKey = {
-      status:     res.status,
-      statusText: res.statusText,
-      bodyPreview: body.slice(0, 300),
-    };
-  } catch (err) {
-    withKey = { error: err instanceof Error ? err.message : String(err) };
-  }
+    // BNS v2 via Stacks node RPC
+    "https://api.hiro.so/v2/bns/names/flor.btc",
 
-  // ─── 3. Test the call WITHOUT any key (baseline) ──────────────────
-  let withoutKey: Record<string, unknown>;
-  try {
-    const res = await fetch("https://api.hiro.so/v1/names/flor.btc", {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    const body = await res.text();
-    withoutKey = {
-      status:     res.status,
-      statusText: res.statusText,
-      bodyPreview: body.slice(0, 300),
-    };
-  } catch (err) {
-    withoutKey = { error: err instanceof Error ? err.message : String(err) };
-  }
+    // BNS lookup via extended API
+    "https://api.hiro.so/extended/v1/address/flor.btc/stx",
 
-  // ─── 4. Return everything as JSON ─────────────────────────────────
+    // Alternative: BNS names endpoint
+    "https://api.hiro.so/extended/v1/names/flor.btc",
+
+    // Stacks node direct
+    "https://api.hiro.so/v2/contracts/call-read/SP000000000000000000002Q6VF78/bns/name-resolve",
+
+    // Sanity check: confirm root API responds
+    "https://api.hiro.so/extended",
+  ];
+
+  const results: Record<string, unknown> = {};
+
+  await Promise.all(
+    endpoints.map(async (url) => {
+      try {
+        const res = await fetch(url, { headers, cache: "no-store" });
+        const body = await res.text();
+        results[url] = {
+          status:     res.status,
+          statusText: res.statusText,
+          bodyPreview: body.slice(0, 200),
+        };
+      } catch (err) {
+        results[url] = { error: err instanceof Error ? err.message : String(err) };
+      }
+    })
+  );
+
   return NextResponse.json({
-    diagnosis: {
-      keyStatus,
-      withKey,
-      withoutKey,
-    },
-    instructions: "Share this JSON output. Delete this endpoint after diagnosing.",
+    keyPresent: !!apiKey,
+    keyLength:  apiKey?.length ?? 0,
+    results,
   });
 }
