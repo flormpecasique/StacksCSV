@@ -1,198 +1,204 @@
-# 🟣 StacksCSV — Tax & Data Export Layer for Stacks
+# 🟣 Stacks Tax & Data Export Layer
 
-![Preview](/preview.jpeg)
+> **StacksCSV** is the missing data layer for Stacks: it converts raw blockchain activity into **clean, tax-ready CSV exports** compatible with Koinly, CoinTracking, and Awaken.
 
-> A missing data layer for Stacks — turn raw on-chain activity into **tax-ready CSV exports** and a **professional capital-gains PDF report**, in seconds.
-
-**StacksCSV** takes a Stacks address (or `.btc` name) and produces:
-
-1. 📤 A **clean CSV** compatible with Koinly, CoinTracking and Awaken.
-2. 🧾 A **fiscal PDF report** with realized gains/losses, valued at historical prices, localized for your country.
-
-Everything runs on demand — **no accounts, no persistent storage**.
-
----
+![Preview](./preview.jpeg)
 
 ## 🌍 Live App
-👉 **https://stackscsv.vercel.app/**
+
+**[stackscsv.vercel.app](https://stackscsv.vercel.app)**
+
+No signup. No wallet connection. Enter an address or a `.btc` name — get a CSV in seconds.
 
 ---
 
-# 🚨 Problem
+## 🚨 The Problem
 
-Stacks lacks a reliable data layer for tax reporting. Users face:
+Stacks lacks a reliable data export layer for tax reporting. Users face:
 
-- broken or incomplete exports from explorers
-- manual CSV cleaning for tax tools
-- incorrect transaction classification in Awaken / Koinly
-- no historical fiat valuation for STX or SIP-010 tokens
-- swaps and contract-call token movements that get lost
+- **Broken or incomplete explorer exports** — missing columns, wrong timestamps, stuck pagination
+- **Manual cleanup** before anything imports cleanly into tax tools
+- **Misclassified transactions** in Awaken and Koinly
+- **No PoX stacking reward exports** anywhere (until now)
+- **No standard format** for STX, SIP-010 tokens, or Bitcoin rewards
 
-The result: hours of manual work every tax season.
+## 💡 The Solution
 
----
+StacksCSV is a focused tool that does one thing well: pulls your Stacks history and formats it exactly the way tax tools expect.
 
-# 💡 Solution
-
-StacksCSV provides two deliverables from a single address:
-
-### 📤 CSV export (for tax software)
-- Clean STX + SIP-010 transaction extraction
-- Stacking (PoX) rewards included
-- Contract-call token movements (swaps, DeFi) correctly captured
-- Date filtering (tax-year support)
-- CSV-injection-safe output
-- Compatible with **Koinly · CoinTracking · Awaken**
-
-### 🧾 Fiscal PDF report (built in the browser)
-- **Realized gains/losses** with your choice of cost-basis method (FIFO / LIFO / HIFO / ACB)
-- **Historical prices** for each transaction (via CoinGecko)
-- Swaps correctly split into disposal + acquisition (no phantom gains)
-- Staking rewards treated as **income at fair market value**
-- **Multi-jurisdiction**: 🇪🇸 Spain · 🇺🇸 US · 🇲🇽 Mexico · 🇦🇷 Argentina · 🇨🇴 Colombia · 🇵🇹 Portugal · 🇩🇪 Germany · 🇬🇧 UK · 🇨🇦 Canada · 🌐 International
-- **"Items to review"** section that flags (never hides) anything the engine couldn't value with certainty — missing cost basis, unpriced tokens, or dates without market data
-
-> The report shows **figures, not the tax you owe**. It is a technical supporting document, **not tax advice** (see the disclaimer below).
+- Clean STX transaction extraction
+- SIP-010 fungible token support (ALEX, WELSH, sBTC, USDA, DIKO, +)
+- **PoX stacking rewards** denominated in BTC
+- Nakamoto-era & pre-Nakamoto timestamps handled correctly
+- Date filtering by tax year
+- Output compatible with every major crypto tax platform
+- No login, no data storage, client-safe processing
 
 ---
 
-# 🔒 Privacy & Security
+## ⚡ Features
 
-Privacy-first by design, and built with tax-grade correctness in mind.
+### 📤 Transaction export
+- All STX transfers (sent, received, self)
+- SIP-010 fungible token transfers with symbol & decimals auto-resolved
+- Correct fee attribution (sender only, first row per tx)
 
-**Privacy**
-- No accounts, no login, **no persistent storage**
-- The realized-gains calculation and PDF generation happen **entirely in your browser** — that data never leaves your device
-- The server transiently queries Hiro (for transactions) and CoinGecko (for historical prices, coin IDs + dates only — never your address) and caches results briefly in memory
+### ₿ PoX stacking rewards
+- Automatically detects your Stacks address's PoX reward BTC address
+- Supports **P2PKH, P2SH, P2WPKH, P2WSH, and P2TR** Bitcoin address formats (full Base58Check + Bech32/Bech32m encoding)
+- Resolves each reward cycle's exact Bitcoin block timestamp
+- Reported as BTC income rows — exactly how Koinly expects stacking rewards
 
-**Security**
-- **Decimal math everywhere** (no floating-point drift in money calculations)
-- **Fail-closed pricing**: an asset with no reliable price is flagged for review, never valued at $0 or a guess
-- **Input validation**: Stacks addresses and BNS names are strictly validated before any outbound request (no path/parameter injection)
-- **CSV-injection protection**: values starting with `= + - @` are neutralized so a malicious token name can't execute a formula in Excel/Sheets
-- **Security headers + CSP**, per-IP rate limiting, and SSRF-safe price/data proxies
-- API keys (if any) live in server environment variables — **never committed to the repo**
+### 📅 Date filtering
+- Quick presets: **This Year · Last Year · Last 30 Days**
+- Custom date ranges with mobile-safe inputs (no iOS zoom issues)
 
----
+### 🧾 Tax summary dashboard
+- STX received / sent / fees / transaction count
+- BTC earned from stacking (separate stacking rewards card)
+- Condensed line summary of other tokens detected (included in CSV)
 
-# 🧩 How it works
+### 🌐 BNS name support
+- Enter `flor.btc` instead of a long `SP…` address
+- Resolution happens via the **on-chain BNS Clarity contract** — not a REST API
 
-```
-Address / .btc
-      │
-      ▼
-/api/transactions ──► Hiro (server) ──► clean CsvRow[]  ──►  CSV download
-      │                                        │
-      │                                        ▼
-      │                               csvRowsToRawFlows()      (browser)
-      │                                        │
-      ▼                                        ▼
-/api/price ──► CoinGecko (server, batched)  realized-gains engine (FIFO/…)
-      │                                        │
-      └──────────► historical prices ─────────►│
-                                               ▼
-                                     jurisdiction profile + PDF (browser)
-```
+### 🌎 Bilingual UI
+- English / Español toggle
+- All error messages, labels, and summaries translated
 
-- **`/api/transactions`** — resolves the address / `.btc`, fetches paginated transactions and stacking rewards from Hiro, and returns clean rows.
-- **`/api/price`** — a server-side CoinGecko proxy that fetches one price range per asset (fast, no CORS, cache-friendly).
-- **`src/lib/gains/`** — the tax engine: adapter → pricing → FIFO/LIFO/HIFO/ACB matching → jurisdiction-localized report → PDF.
+### 🔒 Privacy-first
+- No accounts, no stored data, nothing persisted server-side beyond a 2-minute in-memory cache
+- All blockchain data fetched on-demand
 
 ---
 
-# 🪙 Supported tokens (historical pricing)
+## 🏗 Architecture
 
-Priced via CoinGecko (verified IDs): **STX, sBTC, BTC, xBTC, USDC, aeUSDC, USDCx, ALEX, VELAR, WELSH, sUSDT, stSTX, USDH, NOT, DIKO, LEO**.
+StacksCSV is a **Next.js app** running on Vercel. Blockchain data goes through two paths depending on what's needed:
 
-Tokens without a reliable price feed (e.g. `USDA`, `stSTXbtc`) are **recognized but flagged "to review"** rather than mis-priced.
+| What it's getting | How it gets it |
+|---|---|
+| **BNS name resolution** | Direct call to the BNS **Clarity smart contract** (`SP000000000000000000002Q6VF78.bns`) via the public RPC endpoint `/v2/contracts/call-read/` — no API key needed |
+| **Transaction history** | Hiro `/extended/v1/address/{addr}/transactions_with_transfers` — authenticated with `HIRO_API_KEY` |
+| **FT token metadata** | Hiro `/metadata/v1/ft/{contract}` + hardcoded cache of known tokens — authenticated |
+| **PoX stacking state** | Hiro `/extended/v2/addresses/{addr}/stacking` → `/extended/v1/burnchain/rewards/` → `/extended/v2/burn-blocks/` |
 
-**Adding a token:** open its page on [coingecko.com](https://www.coingecko.com), copy the value shown as **"API ID"** (⚠️ this is often *not* the URL slug — e.g. LEO's URL is `leo-2` but its API ID is `leopold`), confirm it's the correct Stacks token via its contract, then add it to `src/lib/gains/assets.ts`.
+### Why on-chain BNS resolution?
 
----
-
-# 🛠️ Tech stack
-
-- **Next.js 14** (App Router) · **TypeScript** · **Tailwind CSS**
-- **decimal.js** — exact money math
-- **jsPDF** + **jspdf-autotable** — client-side PDF (dynamically imported, kept out of the main bundle)
-- **Hiro API** (transactions) · **CoinGecko API** (historical prices)
-- Deployed on **Vercel** (serverless, no database)
+Hiro deprecated their REST BNS endpoints (`/v1/names/`, `/v2/bns/names/`, etc.) in late 2026. Instead of chasing REST endpoint changes, StacksCSV calls the BNS **Clarity smart contract directly**. The contract is immutable on the blockchain — it will never be deprecated, moved, or taken down.
 
 ---
 
-# 🚀 Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 18+
+- A free Hiro API key from [platform.hiro.so](https://platform.hiro.so) (optional for BNS, required for transaction history at any volume)
 
-### Install & run
+### Install
 
 ```bash
 git clone https://github.com/flormpecasique/StacksCSV.git
 cd StacksCSV
 npm install
+```
+
+### Environment variables
+
+Create a `.env.local` file in the project root:
+
+```
+HIRO_API_KEY=your_hiro_api_key_here
+```
+
+> **Note:** BNS resolution works without an API key. Transaction and stacking lookups will hit rate limits from shared cloud IPs without one — strongly recommended for production.
+
+### Run
+
+```bash
 npm run dev
 ```
 
-Open 👉 http://localhost:3000
-
-### Environment variables (optional)
-
-| Variable | Purpose |
-| --- | --- |
-| `COINGECKO_API_KEY` | A free CoinGecko **demo** key. Optional — raises price-lookup rate limits under heavy use. Set it in Vercel → Settings → Environment Variables. **Never commit it.** |
+Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-# 🌐 Deploy
+## 🌐 Deploy
 
-**Vercel (recommended)**
+### Vercel (recommended)
 
-1. Push to GitHub
-2. Import the repo into Vercel
-3. Deploy
+1. Push the code to GitHub
+2. Import the project into Vercel
+3. Add `HIRO_API_KEY` as an environment variable (Production, Preview, Development)
+4. Deploy
 
-Or from the CLI:
+### CLI
 
 ```bash
 vercel
 ```
 
----
-
-# 🔮 Roadmap
-
-- SIP-010 tokens (ALEX, WELSH, VELAR, …) ✅
-- Stacking rewards export (PoX) ✅
-- `.btc` name resolution ✅
-- Contract-call token parsing (swaps / DeFi) ✅
-- Historical price valuation ✅
-- Realized-gains engine (FIFO / LIFO / HIFO / ACB) ✅
-- Multi-jurisdiction fiscal PDF report ✅
-- Expand verified token price coverage 🔄
-- Multi-wallet aggregation ⏳
-- Self-transfer detection between own wallets ⏳
+Set `HIRO_API_KEY` in your project settings afterwards.
 
 ---
 
-# ⚠️ Disclaimer
+## 🛠 Tech Stack
 
-StacksCSV is a **technical tool**, not a tax or accounting service. The reports it generates are supporting documents based on on-chain data and the selected method; they do **not** constitute tax advice, and they do **not** compute the tax you owe. The legal classification of each transaction and all filing obligations are the responsibility of the taxpayer and their advisor. Always verify the figures and your jurisdiction's current rules before filing.
-
----
-
-# 🤝 Use case
-
-Perfect for anyone who needs:
-- Stacks tax reporting (CSV for Koinly / CoinTracking / Awaken)
-- A realized gains/loss report valued at historical prices
-- Year-end transaction summaries for a crypto accountant
-- Clean, standardized STX transaction data
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript (strict mode, ES2020 target)
+- **Styling:** Tailwind CSS
+- **Blockchain:**
+  - Hiro Stacks API for transaction history, token metadata, stacking data
+  - Stacks RPC (`/v2/contracts/call-read/`) for on-chain BNS resolution
+- **Hosting:** Vercel (serverless functions + edge caching)
 
 ---
 
-# 🧡 Donate
+## 🧠 Why This Matters
 
-If this tool saved you time, consider a tip:
+Stacks has no dependable tax data layer. StacksCSV is a lightweight infrastructure piece that fills that gap — not a product, not a SaaS, just a tool that does the thing you need done on April 14th.
 
-**STX / .btc:** `flor.btc`
+---
+
+## ⚡ Performance
+
+- Serverless-ready and optimized for Vercel
+- No database required
+- Fast in-memory caching (2-minute TTL per address)
+- Parallel pagination (5 batches concurrently) for addresses with many transactions
+- Minimal bundle size with no heavy UI libraries
+
+---
+
+## 🔮 Roadmap
+
+- ✅ SIP-010 token support (ALEX, WELSH, sBTC, USDA, DIKO, …)
+- ✅ Stacking rewards export (PoX) — BTC earned from all cycles
+- ✅ Nakamoto-era timestamp precision
+- ✅ `.btc` name resolution via on-chain contract
+- ✅ Bilingual EN / ES interface
+- ✅ Mobile-first responsive design
+- 🚧 Smart contract transaction parsing (DeFi interactions)
+- 🚧 Multi-wallet aggregation (export multiple addresses at once)
+- 🚧 Persistent edge caching with Vercel KV
+
+---
+
+## 🤝 Use Cases
+
+- End-of-year **tax reporting** for Stacks users
+- **Crypto accountants** needing standardized CSV input
+- **Stackers** tracking BTC rewards across cycles
+- Preparing clean data for **Awaken, Koinly, CoinTracking**
+
+---
+
+## 🧡 Donate
+
+If this saved you time this tax season, consider tipping: **`flor.btc`**
+
+---
+
+## 📄 License
+
+MIT — fork it, extend it, use it in whatever you build.
