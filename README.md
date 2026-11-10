@@ -156,7 +156,7 @@ Set `HIRO_API_KEY` in your project settings afterwards.
 
 ## 🧠 Why This Matters
 
-Stacks has no dependable tax data layer. StacksCSV is a lightweight infrastructure piece that fills that gap — not a product, not a SaaS, just a tool that does the thing you need done on April 14th.
+Stacks has no dependable tax data layer. **StacksCSV isn't trying to be your next subscription.** It's a free tool that exports your transaction history in the exact format tax platforms expect — nothing more, nothing less.
 
 ---
 
