@@ -437,17 +437,103 @@ export default function Home() {
         )}
       </main>
 
-      {/* ── FOOTER ─────────────────────────────────────────────────────────*/}
-      <footer className="relative text-center py-6 px-4 text-xs"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-body)", zIndex: 1, borderTop: "1px solid var(--border)" }}>
-        <p>
-          {t("footerText")}{" "}
-          <a href="https://docs.hiro.so" target="_blank" rel="noopener noreferrer"
-            className="hover:underline" style={{ color: "var(--brand)" }}>
-            Hiro Systems
-          </a>{" "}
-          {t("footerSuffix")}
-        </p>
+      {/* ── FOOTER ─────────────────────────────────────────────────────────
+           Replaces the previous Hiro-only credit line. Now carries:
+             - Author attribution ("Built by Flor Peña") — for SEO + AI crawlers
+             - Professional role — matches the schema.org Person in layout.tsx
+             - Social links (GitHub / LinkedIn / X) — same anchors AIs use
+             - Original Hiro credit — kept, moved to the bottom meta line
+      ─────────────────────────────────────────────────────────────────── */}
+      <footer
+        role="contentinfo"
+        className="relative py-8 px-4 text-xs"
+        style={{
+          color: "var(--text-muted)",
+          fontFamily: "var(--font-body)",
+          zIndex: 1,
+          borderTop: "1px solid var(--border)",
+          background: "rgba(0,0,0,0.25)",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 640,
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
+            textAlign: "center",
+          }}
+        >
+          {/* Author attribution — the key signal for IA/SEO */}
+          <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+            {lang === "es" ? "Creado por" : "Built by"}{" "}
+            <a
+              href="https://github.com/flormpecasique"
+              target="_blank"
+              rel="author noopener noreferrer"
+              aria-label="Flor Peña on GitHub"
+              style={{ color: "var(--brand)", textDecoration: "none", fontWeight: 700 }}
+            >
+              Flor Peña
+            </a>
+            {" · "}
+            <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
+              Product Manager &amp; Digital Product Builder
+            </span>
+          </p>
+
+          {/* Social links */}
+          <p style={{ margin: 0, fontSize: "0.8rem" }}>
+            <a
+              href="https://github.com/flormpecasique"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)", textDecoration: "none", margin: "0 0.4rem" }}
+            >
+              GitHub
+            </a>
+            ·
+            <a
+              href="https://www.linkedin.com/in/florpc/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)", textDecoration: "none", margin: "0 0.4rem" }}
+            >
+              LinkedIn
+            </a>
+            ·
+            <a
+              href="https://x.com/flormpecasique"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)", textDecoration: "none", margin: "0 0.4rem" }}
+            >
+              X
+            </a>
+          </p>
+
+          {/* Original Hiro credit — preserved, moved to meta line */}
+          <p style={{ margin: "4px 0 0", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+            {t("footerText")}{" "}
+            <a
+              href="https://docs.hiro.so"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: "var(--brand)" }}
+            >
+              Hiro Systems
+            </a>{" "}
+            {t("footerSuffix")}
+            {" · "}
+            MIT License · © 2026 Flor Peña
+          </p>
+        </div>
       </footer>
     </div>
   );
