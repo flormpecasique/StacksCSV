@@ -531,7 +531,7 @@ export default function Home() {
             </a>{" "}
             {t("footerSuffix")}
             {" · "}
-            MIT License · © 2026 Flor Peña
+            MIT License · © 2026
           </p>
         </div>
       </footer>
