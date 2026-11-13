@@ -1,19 +1,3 @@
-/**
- * src/app/layout.tsx
- *
- * Reemplaza tu layout.tsx actual con este.
- *
- * Incluye:
- *   - Metadata completo (title, description, authors, keywords)
- *   - Open Graph tags (preview en WhatsApp, Discord, LinkedIn, etc.)
- *   - Twitter Card tags
- *   - Schema.org JSON-LD con Person (Flor Peña) + SoftwareApplication
- *   - Canonical URL
- *
- * ANTES DE DEPLOYAR:
- *   1. Añade `public/og-image.jpg` (la imagen og-stackscsv.jpg renombrada)
- *   2. Verifica que no tengas otro <head> duplicado en page.tsx
- */
 
 import type { Metadata } from "next";
 import "./globals.css";
